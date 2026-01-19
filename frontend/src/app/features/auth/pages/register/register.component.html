@@ -1,0 +1,14 @@
+<h2>Регистрация</h2>
+
+<form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+    <label for="nick-name">Имя пользователя: </label>
+    <input id="nick-name" type="text" formControlName="nickName" />
+
+    <label for="email">Электронная почта: </label>
+    <input id="email" type="text" formControlName="email" />
+
+    <label for="password">Пароль: </label>
+    <input id="password" type="text" formControlName="password" />
+
+    <button>Зарегистрироваться</button>
+</form>
