@@ -1,13 +1,16 @@
 package domain
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestChooseGoal_WrongPhase(t *testing.T) {
 	s := baseState()
 	s.Phase = PhaseRolling
 
 	_, _, err := Apply(s, ChooseGoalCommand{Player: "p1", Goal: GoalClue}, &FixedRNG{Values: []int{1}})
-	if err != ErrInvalidPhase {
+	if !errors.Is(err, ErrInvalidPhase) {
 		t.Fatalf("expected ErrInvalidPhase, got %v", err)
 	}
 }
@@ -17,7 +20,7 @@ func TestRollAuto_NotYourTurn(t *testing.T) {
 	s.ActiveSeat = 1 // ходит p2
 
 	_, _, err := Apply(s, RollAutoCommand{Player: "p1"}, &FixedRNG{Values: []int{1}})
-	if err != ErrNotYourTurn {
+	if !errors.Is(err, ErrNotYourTurn) {
 		t.Fatalf("expected ErrNotYourTurn, got %v", err)
 	}
 }
@@ -30,7 +33,7 @@ func TestRollAuto_FailureMovesFox(t *testing.T) {
 		t.Fatalf("choose goal err: %v", err)
 	}
 	// force failure: Intn(2)==0
-	s3, evs, err := Apply(s2, RollAutoCommand{Player: "p1"}, &FixedRNG{Values: []int{0}})
+	s3, evs, err := Apply(s2, RollAutoCommand{Player: "p1"}, rngAllEyes())
 	if err != nil {
 		t.Fatalf("roll err: %v", err)
 	}
@@ -61,3 +64,6 @@ func baseState() GameState {
 	}
 	return s
 }
+
+func rngAllEyes() *FixedRNG       { return &FixedRNG{Values: []int{1}} }
+func rngAllFootprints() *FixedRNG { return &FixedRNG{Values: []int{0}} }

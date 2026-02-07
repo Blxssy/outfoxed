@@ -52,27 +52,27 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 		return s, nil, ErrGoalNotSet
 	}
 
-	success := rng.Intn(2) == 1
+	res := RollForGoal(s.Goal.Type, rng)
 
 	events := make([]Event, 0, 2)
 	events = append(events, Event{
 		Type: EvRolled,
 		Data: map[string]any{
-			"success": success,
-			"goal":    s.Goal.Type,
+			"success":  res.Success,
+			"goal":     res.Goal,
+			"attempts": res.Attempts,
+			"faces":    res.Faces,
 		},
 	})
 
-	if !success {
+	if !res.Success {
 		s.FoxTrack += 3
 		events = append(events, Event{
 			Type: EvFoxMoved,
 			Data: map[string]any{"by": 3, "foxTrack": s.FoxTrack},
 		})
-		// при неуспехе ход по сути заканчивается
 		s.Phase = PhaseEndTurn
 	} else {
-		// при успехе будет действие (движение/открытие) — пока переходим в PhaseAction
 		s.Phase = PhaseAction
 	}
 
