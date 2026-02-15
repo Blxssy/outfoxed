@@ -7,6 +7,7 @@ const (
 	EvRolled     EventType = "rolled"
 	EvFoxMoved   EventType = "fox_moved"
 	EvTurnEnded  EventType = "turn_ended"
+	EvClueTaken  EventType = "clue_taken"
 )
 
 type Event struct {

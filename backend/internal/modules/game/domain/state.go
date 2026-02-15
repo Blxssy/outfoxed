@@ -1,5 +1,13 @@
 package domain
 
+type PendingAction string
+
+const (
+	PendingNone    PendingAction = "none"
+	PendingClue    PendingAction = "clue"
+	PendingSuspect PendingAction = "suspect"
+)
+
 type PlayerState struct {
 	ID       PlayerID `json:"id"`
 	Seat     int      `json:"seat"` // 0..3
@@ -22,7 +30,13 @@ type GameState struct {
 		Set  bool     `json:"set"`
 	} `json:"goal"`
 
-	// Suspects []SuspectState
+	CluesFound int `json:"clues_found"`
+	CluesTotal int `json:"clues_total"`
+
+	// Что нужно сделать после успешного броска
+	Pending PendingAction `json:"pending"`
+
+	Suspects []SuspectState
 	// Clues    []ClueState
 }
 

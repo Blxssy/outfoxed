@@ -3,9 +3,11 @@ package domain
 type CommandType string
 
 const (
-	CmdChooseGoal CommandType = "choose_goal"
-	CmdRollAuto   CommandType = "roll_auto" // MVP: сервер сам делает до 3 попыток
-	CmdEndTurn    CommandType = "end_turn"
+	CmdChooseGoal     CommandType = "choose_goal"
+	CmdRollAuto       CommandType = "roll_auto" // MVP: сервер сам делает до 3 попыток
+	CmdEndTurn        CommandType = "end_turn"
+	CmdTakeClue       CommandType = "take_clue"
+	CmdRevealSuspects CommandType = "reveal_suspects"
 )
 
 type Command interface {
@@ -37,3 +39,18 @@ type EndTurnCommand struct {
 
 func (c EndTurnCommand) Type() CommandType { return CmdEndTurn }
 func (c EndTurnCommand) Actor() PlayerID   { return c.Player }
+
+// TakeClueCommand взять подсказку
+type TakeClueCommand struct {
+	Player PlayerID `json:"player"`
+}
+
+func (c TakeClueCommand) Type() CommandType { return CmdTakeClue }
+func (c TakeClueCommand) Actor() PlayerID   { return c.Player }
+
+type RevealSuspectsCommand struct {
+	Player PlayerID `json:"player"`
+}
+
+func (c RevealSuspectsCommand) Type() CommandType { return CmdRevealSuspects }
+func (c RevealSuspectsCommand) Actor() PlayerID   { return c.Player }

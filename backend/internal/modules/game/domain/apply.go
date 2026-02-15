@@ -17,6 +17,10 @@ func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
 		return applyRollAuto(s, c, rng)
 	case EndTurnCommand:
 		return applyEndTurn(s, c)
+	case TakeClueCommand:
+		return applyTakeClue(s, c)
+	case RevealSuspectsCommand:
+		return applyRevealSuspects(s, c)
 	default:
 		return s, nil, ErrInvalidPhase
 	}
@@ -67,12 +71,18 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 
 	if !res.Success {
 		s.FoxTrack += 3
+		s.Pending = PendingNone
 		events = append(events, Event{
 			Type: EvFoxMoved,
 			Data: map[string]any{"by": 3, "foxTrack": s.FoxTrack},
 		})
 		s.Phase = PhaseEndTurn
 	} else {
+		if s.Goal.Type == GoalClue {
+			s.Pending = PendingClue
+		} else {
+			s.Pending = PendingSuspect
+		}
 		s.Phase = PhaseAction
 	}
 
@@ -96,6 +106,77 @@ func applyEndTurn(s GameState, c EndTurnCommand) (GameState, []Event, error) {
 	s.Version++
 
 	ev := Event{Type: EvTurnEnded, Data: map[string]any{"activeSeat": s.ActiveSeat, "turn": s.Turn}}
+	return s, []Event{ev}, nil
+}
+
+func applyTakeClue(s GameState, c TakeClueCommand) (GameState, []Event, error) {
+	if s.Phase != PhaseAction {
+		return s, nil, ErrInvalidPhase
+	}
+
+	if s.Pending == PendingNone {
+		return s, nil, ErrNoPendingAction
+	}
+	if s.Pending != PendingClue {
+		return s, nil, ErrPendingNotClue
+	}
+	if s.CluesTotal > 0 && s.CluesFound >= s.CluesTotal {
+		return s, nil, ErrAllCluesCollected
+	}
+
+	s.CluesFound++
+	s.Pending = PendingNone
+	s.Phase = PhaseEndTurn
+	s.Version++
+
+	ev := Event{
+		Type: EvClueTaken,
+		Data: map[string]any{
+			"cluesFound": s.CluesFound,
+			"cluesTotal": s.CluesTotal,
+		},
+	}
+	return s, []Event{ev}, nil
+}
+
+func applyRevealSuspects(s GameState, c RevealSuspectsCommand) (GameState, []Event, error) {
+	if s.Phase != PhaseAction {
+		return s, nil, ErrInvalidPhase
+	}
+	if s.Pending == PendingNone {
+		return s, nil, ErrNoPendingAction
+	}
+	if s.Pending != PendingSuspect {
+		return s, nil, ErrPendingNotSuspect
+	}
+
+	revealed := make([]int, 0, 2)
+
+	for i := range s.Suspects {
+		if !s.Suspects[i].Revealed {
+			s.Suspects[i].Revealed = true
+			revealed = append(revealed, s.Suspects[i].ID)
+			if len(revealed) == 2 {
+				break
+			}
+		}
+	}
+
+	if len(revealed) == 0 {
+		return s, nil, ErrNoSuspectsToReveal
+	}
+
+	s.Pending = PendingNone
+	s.Phase = PhaseEndTurn
+	s.Version++
+
+	ev := Event{
+		Type: "suspects_revealed",
+		Data: map[string]any{
+			"ids": revealed,
+		},
+	}
+
 	return s, []Event{ev}, nil
 }
 
