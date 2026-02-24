@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ButtonComponent } from "../../../../ui-kit/button";
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ButtonComponent],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss'
 })

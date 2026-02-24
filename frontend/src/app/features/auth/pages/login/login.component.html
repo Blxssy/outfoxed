@@ -1,14 +1,24 @@
-<h2>Авторизация</h2>
+<div class="login-page">
+    <div class="login-card">
+        <h2>Авторизация</h2>
+        <form
+            class="login-form"
+            [formGroup]="loginForm"
+            (ngSubmit)="onSubmit()"
+        >
+            <label for="nick-name">Имя пользователя: </label>
+            <input id="nick-name" type="text" formControlName="nickName" />
 
-<form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-    <label for="nick-name">Имя пользователя: </label>
-    <input id="nick-name" type="text" formControlName="nickName" />
+            <label for="email">Электронная почта: </label>
+            <input id="email" type="text" formControlName="email" />
 
-    <label for="email">Электронная почта: </label>
-    <input id="email" type="text" formControlName="email" />
+            <label for="password">Пароль: </label>
+            <input id="password" type="text" formControlName="password" />
 
-    <label for="password">Пароль: </label>
-    <input id="password" type="text" formControlName="password" />
+            <a>Забыли пароль?</a>
 
-    <button>Войти</button>
-</form>
+            <fox-button [text]="'Войти'"></fox-button>
+            <div>Нет аккаунта? <a href="">Зарегистрироваться</a></div>
+        </form>
+    </div>
+</div>

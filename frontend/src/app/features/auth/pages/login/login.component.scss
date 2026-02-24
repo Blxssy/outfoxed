@@ -13,3 +13,25 @@ form {
     flex-direction: column;
     gap: 8px;
 }
+
+// стили формы
+
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center; 
+}
+
+.login-card {
+    color: white;
+    width: 420px;
+    border-radius: 16px;
+    padding: 24px;
+    background: linear-gradient(to bottom, #1f5a3f, #1b4d36);
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
