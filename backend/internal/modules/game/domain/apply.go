@@ -1,8 +1,11 @@
 package domain
 
 func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
+	if s.Status == StatusFinished {
+		return s, nil, ErrGameFinished
+	}
 	if s.Status != StatusActive {
-		return GameState{}, nil, ErrGameNotActive
+		return s, nil, ErrGameNotActive
 	}
 
 	activePlayer, ok := s.ActivePlayer()
@@ -21,6 +24,9 @@ func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
 		return applyTakeClue(s, c)
 	case RevealSuspectsCommand:
 		return applyRevealSuspects(s, c)
+	case AccuseCommand:
+		return applyAccuse(s, c)
+
 	default:
 		return s, nil, ErrInvalidPhase
 	}
@@ -71,6 +77,16 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 
 	if !res.Success {
 		s.FoxTrack += 3
+		if s.FoxEscapeAt > 0 && s.FoxTrack >= s.FoxEscapeAt {
+			s.Status = StatusFinished
+			s.Result = ResultLose
+			events = append(events, Event{
+				Type: EvGameFinished,
+				Data: map[string]any{"result": s.Result},
+			})
+			s.Version++
+			return s, events, nil
+		}
 		s.Pending = PendingNone
 		events = append(events, Event{
 			Type: EvFoxMoved,
@@ -178,6 +194,59 @@ func applyRevealSuspects(s GameState, c RevealSuspectsCommand) (GameState, []Eve
 	}
 
 	return s, []Event{ev}, nil
+}
+
+func applyAccuse(s GameState, c AccuseCommand) (GameState, []Event, error) {
+	// Можно разрешить обвинение только когда игрок реально “может обвинить”.
+	// В MVP разрешим из PhaseAction или PhaseEndTurn (после раскрытия/подсказки).
+	if s.Phase != PhaseAction && s.Phase != PhaseEndTurn {
+		return s, nil, ErrInvalidPhase
+	}
+
+	// Базовая защита: обвинять можно только раскрытого и не исключённого
+	if c.SuspectID < 0 || c.SuspectID >= len(s.Suspects) {
+		return s, nil, ErrInvalidPhase
+	}
+	sp := s.Suspects[c.SuspectID]
+	if !sp.Revealed {
+		return s, nil, ErrSuspectNotRevealed
+	}
+	if sp.Excluded {
+		return s, nil, ErrSuspectExcluded
+	}
+
+	correct := (c.SuspectID == s.CulpritID)
+
+	s.Version++
+
+	evs := []Event{
+		{
+			Type: EvAccused,
+			Data: map[string]any{
+				"suspectId": c.SuspectID,
+				"correct":   correct,
+			},
+		},
+	}
+
+	// Завершение игры
+	s.Status = StatusFinished
+	if correct {
+		s.Result = ResultWin
+	} else {
+		s.Result = ResultLose
+	}
+	s.Phase = ""
+	s.Pending = PendingNone
+
+	evs = append(evs, Event{
+		Type: EvGameFinished,
+		Data: map[string]any{
+			"result": s.Result,
+		},
+	})
+
+	return s, evs, nil
 }
 
 func nextSeat(s GameState) int {

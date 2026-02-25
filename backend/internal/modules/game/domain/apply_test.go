@@ -122,8 +122,11 @@ func baseState() GameState {
 			{ID: "p1", Seat: 0, Position: 0},
 			{ID: "p2", Seat: 1, Position: 0},
 		},
-		Pending:  PendingNone,
-		Suspects: NewSuspects(16),
+		Pending:     PendingNone,
+		Suspects:    NewSuspects(16),
+		FoxEscapeAt: 15, // например, позже подгоним под правила
+		CulpritID:   0,  // для тестов удобно фиксировать
+		Result:      ResultNone,
 	}
 	return s
 }
@@ -178,6 +181,75 @@ func TestRevealSuspects_WrongPending(t *testing.T) {
 	_, _, err := Apply(s, RevealSuspectsCommand{Player: "p1"}, &FixedRNG{Values: []int{0}})
 	if err != ErrPendingNotSuspect {
 		t.Fatalf("expected ErrPendingNotSuspect, got %v", err)
+	}
+}
+
+func TestAccuse_Correct_Wins(t *testing.T) {
+	s := baseState()
+	s.CulpritID = 0
+
+	// раскроем подозреваемого 0
+	s.Suspects[0].Revealed = true
+
+	s2, evs, err := Apply(s, AccuseCommand{Player: "p1", SuspectID: 0}, &FixedRNG{Values: []int{0}})
+	if err != nil {
+		t.Fatalf("accuse err: %v", err)
+	}
+	if s2.Status != StatusFinished {
+		t.Fatalf("expected finished")
+	}
+	if s2.Result != ResultWin {
+		t.Fatalf("expected win, got %s", s2.Result)
+	}
+	if len(evs) < 2 {
+		t.Fatalf("expected events, got %d", len(evs))
+	}
+}
+
+func TestAccuse_Wrong_Lose(t *testing.T) {
+	s := baseState()
+	s.CulpritID = 1
+
+	s.Suspects[0].Revealed = true
+
+	s2, _, err := Apply(s, AccuseCommand{Player: "p1", SuspectID: 0}, &FixedRNG{Values: []int{0}})
+	if err != nil {
+		t.Fatalf("accuse err: %v", err)
+	}
+	if s2.Status != StatusFinished || s2.Result != ResultLose {
+		t.Fatalf("expected lose finished, got %s %s", s2.Status, s2.Result)
+	}
+}
+
+func TestAccuse_NotRevealed_Error(t *testing.T) {
+	s := baseState()
+	s.CulpritID = 0
+	// suspect 0 не раскрыт
+
+	_, _, err := Apply(s, AccuseCommand{Player: "p1", SuspectID: 0}, &FixedRNG{Values: []int{0}})
+	if err != ErrSuspectNotRevealed {
+		t.Fatalf("expected ErrSuspectNotRevealed, got %v", err)
+	}
+}
+
+func TestFoxEscape_Lose(t *testing.T) {
+	s := baseState()
+	s.FoxEscapeAt = 3
+
+	// choose goal clue
+	s2, _, err := Apply(s, ChooseGoalCommand{Player: "p1", Goal: GoalClue}, &FixedRNG{Values: []int{0}})
+	if err != nil {
+		t.Fatalf("choose goal err: %v", err)
+	}
+
+	// force failure for clue: always eyes => 1, лис +3
+	s3, _, err := Apply(s2, RollAutoCommand{Player: "p1"}, &FixedRNG{Values: []int{1}})
+	if err != nil {
+		t.Fatalf("roll err: %v", err)
+	}
+
+	if s3.Status != StatusFinished || s3.Result != ResultLose {
+		t.Fatalf("expected finished lose, got %s %s", s3.Status, s3.Result)
 	}
 }
 

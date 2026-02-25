@@ -8,6 +8,7 @@ const (
 	CmdEndTurn        CommandType = "end_turn"
 	CmdTakeClue       CommandType = "take_clue"
 	CmdRevealSuspects CommandType = "reveal_suspects"
+	CmdAccuse         CommandType = "accuse"
 )
 
 type Command interface {
@@ -54,3 +55,11 @@ type RevealSuspectsCommand struct {
 
 func (c RevealSuspectsCommand) Type() CommandType { return CmdRevealSuspects }
 func (c RevealSuspectsCommand) Actor() PlayerID   { return c.Player }
+
+type AccuseCommand struct {
+	Player    PlayerID `json:"player"`
+	SuspectID int      `json:"suspectId"`
+}
+
+func (c AccuseCommand) Type() CommandType { return CmdAccuse }
+func (c AccuseCommand) Actor() PlayerID   { return c.Player }

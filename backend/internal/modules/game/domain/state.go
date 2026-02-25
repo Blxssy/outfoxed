@@ -38,7 +38,19 @@ type GameState struct {
 
 	Suspects []SuspectState
 	// Clues    []ClueState
+
+	FoxEscapeAt int        `json:"foxEscapeAt"` // порог, когда лис убежал
+	CulpritID   int        `json:"culpritId"`   // кто виновник
+	Result      GameResult `json:"result"`
 }
+
+type GameResult string
+
+const (
+	ResultNone GameResult = "none"
+	ResultWin  GameResult = "win"
+	ResultLose GameResult = "lose"
+)
 
 func (gs GameState) ActivePlayer() (PlayerState, bool) {
 	for _, p := range gs.Players {

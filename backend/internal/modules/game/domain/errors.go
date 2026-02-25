@@ -15,4 +15,8 @@ var (
 
 	ErrPendingNotSuspect  = errors.New("pending action is not suspect")
 	ErrNoSuspectsToReveal = errors.New("no more suspects to reveal")
+
+	ErrGameFinished       = errors.New("game is finished")
+	ErrSuspectNotRevealed = errors.New("suspect is not revealed")
+	ErrSuspectExcluded    = errors.New("suspect is excluded")
 )
