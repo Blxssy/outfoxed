@@ -10,10 +10,10 @@ import { NgClass } from "@angular/common";
 export class ButtonComponent {
     readonly text = input.required<string>();
     readonly isDisabled = input<boolean>(false);
-    readonly size = input<string>('default');
+    readonly size = input<string>('md');
     readonly color = input<string>('orange');
 
     protected getButtonClasses(): string {
-        return ['btn', `color-${this.color()}`, this.size()].join(' ');
+        return ['btn', `btn-${this.color()}`, `btn-${this.size()}`].join(' ');
     }
 }

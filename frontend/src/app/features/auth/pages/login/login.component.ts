@@ -2,10 +2,11 @@ import { Component } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {Validators} from '@angular/forms';
 import { ButtonComponent } from "../../../../ui-kit/button";
+import { InputComponent } from '../../../../ui-kit/input';
 
 @Component({
     selector: 'app-login',
-    imports: [ReactiveFormsModule, ButtonComponent],
+    imports: [ReactiveFormsModule, ButtonComponent, InputComponent],
     templateUrl: './login.component.html',
     styleUrl: './login.component.scss',
 })

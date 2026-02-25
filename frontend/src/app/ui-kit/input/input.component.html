@@ -1,1 +1,27 @@
-<p>input works!</p>
+<div class="input-container">
+    <div [ngClass]="getInputClasses()">
+        <input
+            class="input-field"
+            [type]="inputType()"
+            [placeholder]="this.placeholder()"
+            [disabled]="this.isDisabled()"
+        />
+
+        @if (type() == "password") {
+            <button
+                type="button"
+                class="password-toggle"
+                (click)="togglePasswordVisibility()"
+            >
+                {{ isPasswordVisible() ? "O" : "X" }}
+                <!-- заменить на иконки глазика позже -->
+            </button>
+        }
+    </div>
+
+    @if (isInvalid() && errorText()) {
+        <div class="input-error">
+            {{ errorText() }}
+        </div>
+    }
+</div>

@@ -1,5 +1,10 @@
-@import '@fontsource/shantell-sans';
-
 * {
     font-family: 'Shantell Sans', sans-serif;
+}
+
+:root {
+  --color-primary: #ff6b00;
+  --color-secondary: #386a2e;
+  --color-danger: #e63946;
+  --color-disabled: #bdbdbd;
 }

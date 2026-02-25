@@ -13,6 +13,8 @@
             <input id="email" type="text" formControlName="email" />
 
             <label for="password">Пароль: </label>
+            <fox-input [type]="'password'" [placeholder]="'пароль'" [errorText]="'error'" [isInvalid]="true"
+            />
             <input id="password" type="text" formControlName="password" />
 
             <a>Забыли пароль?</a>

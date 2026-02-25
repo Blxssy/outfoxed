@@ -1,11 +1,56 @@
 .btn {
-    padding: 8px 16px;
     color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
+
+    transition:
+        transform 0.08s ease,
+        box-shadow 0.08s ease,
+        filter 0.08s ease;
+
+    box-shadow:
+        0 6px 0 rgba(0, 0, 0, 0.25),
+        0 8px 16px rgba(0, 0, 0, 0.3);
+
+    &:hover:not(.btn--disabled) {
+        filter: brightness(1.05);
+    }
+
+    &:active:not(.btn--disabled) {
+        transform: translateY(3px);
+        box-shadow:
+            0 3px 0 rgba(0, 0, 0, 0.25),
+            0 4px 8px rgba(0, 0, 0, 0.3);
+    }
 }
 
-.color-orange {
-    background-color: orange;
+// button colors
+
+.btn-orange {
+    background-color: var(--color-primary);
+}
+
+.btn-green {
+    background-color: var(--color-secondary);
+}
+
+// button sizes
+
+.btn-sm {
+    height: 32px;
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.btn-md {
+    height: 44px;
+    padding: 8px 16px;
+    font-size: 16px;
+}
+
+.btn-lg {
+    height: 56px;
+    padding: 16px 28px;
+    font-size: 18px;
 }
