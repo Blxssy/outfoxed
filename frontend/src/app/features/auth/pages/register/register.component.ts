@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonComponent } from "../../../../ui-kit/button";
+import { ButtonComponent } from "@fox/ui-kit/button";
 
 @Component({
   selector: 'app-register',

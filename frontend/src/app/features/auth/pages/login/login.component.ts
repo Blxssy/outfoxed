@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {Validators} from '@angular/forms';
-import { ButtonComponent } from "../../../../ui-kit/button";
-import { InputComponent } from '../../../../ui-kit/input';
+import { InputComponent } from '@fox/ui-kit/input';
+import { ButtonComponent } from '@fox/ui-kit/button'
 
 @Component({
     selector: 'app-login',
