@@ -25,8 +25,14 @@ type GameRepo interface {
 	// Загружаем игру и блокируем строку до конца транзакции
 	GetGameForUpdate(ctx context.Context, tx *sql.Tx, gameID string) (GameRow, error)
 
+	// Загружаем игру без блокировки для read-only сценариев.
+	GetGame(ctx context.Context, gameID string) (GameRow, error)
+
 	// Проверяем, что пользователь участник игры
 	IsPlayerInGame(ctx context.Context, tx *sql.Tx, gameID string, userID string) (bool, error)
+
+	// Проверяем доступ к игре без транзакции.
+	IsPlayerInGameReadonly(ctx context.Context, gameID string, userID string) (bool, error)
 
 	// Сохраняем новый state и версию
 	UpdateState(ctx context.Context, tx *sql.Tx, gameID string, newStateJSON []byte, newVersion int) error

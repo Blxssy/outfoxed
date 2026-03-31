@@ -31,6 +31,17 @@ func (r *Repo) IsPlayerInGame(ctx context.Context, tx *sql.Tx, gameID string, us
 	return exists, err
 }
 
+func (r *Repo) IsPlayerInGameReadonly(ctx context.Context, gameID string, userID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx, `
+		select exists(
+			select 1 from game_players
+			where game_id = $1 and user_id = $2
+		)
+	`, gameID, userID).Scan(&exists)
+	return exists, err
+}
+
 func (r *Repo) GetGameForUpdate(ctx context.Context, tx *sql.Tx, gameID string) (repo.GameRow, error) {
 	var row repo.GameRow
 	err := tx.QueryRowContext(ctx, `
@@ -38,6 +49,19 @@ func (r *Repo) GetGameForUpdate(ctx context.Context, tx *sql.Tx, gameID string) 
 		from games
 		where id = $1
 		for update
+	`, gameID).Scan(&row.ID, &row.Status, &row.StateJSON, &row.Version, &row.FoxEscapeAt, &row.CulpritID)
+	if err != nil {
+		return repo.GameRow{}, err
+	}
+	return row, nil
+}
+
+func (r *Repo) GetGame(ctx context.Context, gameID string) (repo.GameRow, error) {
+	var row repo.GameRow
+	err := r.db.QueryRowContext(ctx, `
+		select id, status, state_json, version, fox_escape_at, culprit_id
+		from games
+		where id = $1
 	`, gameID).Scan(&row.ID, &row.Status, &row.StateJSON, &row.Version, &row.FoxEscapeAt, &row.CulpritID)
 	if err != nil {
 		return repo.GameRow{}, err

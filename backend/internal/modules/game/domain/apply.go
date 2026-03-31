@@ -197,11 +197,7 @@ func applyRevealSuspects(s GameState, c RevealSuspectsCommand) (GameState, []Eve
 }
 
 func applyAccuse(s GameState, c AccuseCommand) (GameState, []Event, error) {
-	// Можно разрешить обвинение только когда игрок реально “может обвинить”.
-	// В MVP разрешим из PhaseAction или PhaseEndTurn (после раскрытия/подсказки).
-	if s.Phase != PhaseAction && s.Phase != PhaseEndTurn {
-		return s, nil, ErrInvalidPhase
-	}
+	// В текущем MVP обвинение допускается в любой активной фазе хода.
 
 	// Базовая защита: обвинять можно только раскрытого и не исключённого
 	if c.SuspectID < 0 || c.SuspectID >= len(s.Suspects) {
