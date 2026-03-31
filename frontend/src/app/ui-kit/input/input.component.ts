@@ -1,39 +1,57 @@
-import { Component, computed, input, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
+import {
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    input,
+    signal,
+} from '@angular/core';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+
+type InputType = 'text' | 'password' | 'email' | 'number';
+type InputSize = 'sm' | 'md' | 'lg';
 
 @Component({
     selector: 'fox-input',
-    imports: [NgClass],
+    imports: [FormsModule, ReactiveFormsModule],
     templateUrl: './input.component.html',
     styleUrl: './input.component.scss',
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InputComponent {
+    readonly label = input<string>();
+    readonly type = input<InputType>();
+    readonly size = input<InputSize>('md');
     readonly placeholder = input<string>();
-    readonly type = input<string>('text');
-    readonly isDisabled = input<boolean>(false);
+    readonly disabled = input<boolean>(false);
+    readonly suffixIcon = input<boolean>(false);
 
-    readonly isInvalid = input<boolean>(false);
-    readonly errorText = input<string>();
+    protected readonly passwordVisible = signal(false);
 
-    protected isPasswordVisible = signal<boolean>(false);
+    protected readonly resolvedType = computed(() =>
+        this.type() === 'password'
+            ? this.passwordVisible()
+                ? 'text'
+                : 'password'
+            : this.type(),
+    );
 
-    protected inputType = computed(() => {
-        if (this.type() !== 'password') {
-            return this.type();
-        }
+    protected readonly wrapperClasses = computed(() =>
+        ['inp', `inp--${this.size()}`, this.disabled() ? 'inp--disabled' : '']
+            .filter(Boolean)
+            .join(' '),
+    );
+    protected readonly inputClasses = computed(() =>
+        [
+            'inp__native',
+            this.suffixIcon() || this.type() === 'password'
+                ? 'inp__native--suffix'
+                : '',
+        ]
+            .filter(Boolean)
+            .join(' '),
+    );
 
-        return this.isPasswordVisible() ? 'text' : 'password';
-    });
-
-    protected getInputClasses(): string {
-        return [
-            'inp',
-            this.isDisabled() ? 'inp--disabled' : '',
-            this.isInvalid() ? 'inp--error' : '',
-        ].join(' ');
-    }
-
-    protected togglePasswordVisibility(): void {
-        this.isPasswordVisible.set(!this.isPasswordVisible());
+    togglePassword() {
+        this.passwordVisible.update((p) => !p);
     }
 }

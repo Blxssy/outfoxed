@@ -1,27 +1,24 @@
-<div class="input-container">
-    <div [ngClass]="getInputClasses()">
+<div [class]="wrapperClasses()">
+    @if (label()) {
+        <label for="" class="inp__label">{{ label() }}</label>
+    }
+    <div class="inp__field-wrap">
         <input
-            class="input-field"
-            [type]="inputType()"
-            [placeholder]="this.placeholder()"
-            [disabled]="this.isDisabled()"
+            [type]="type()"
+            [class]="inputClasses()"
+            [placeholder]="placeholder()"
+            [disabled]="disabled()"
+            [type]="resolvedType()"
         />
 
-        @if (type() == "password") {
+        @if (type() === "password") {
             <button
                 type="button"
-                class="password-toggle"
-                (click)="togglePasswordVisibility()"
+                class="inp__affix inp__affix--right inp__eye-toggle"
+                (click)="togglePassword()"
             >
-                {{ isPasswordVisible() ? "O" : "X" }}
-                <!-- заменить на иконки глазика позже -->
+                {{ !passwordVisible() ? "O" : "X" }}
             </button>
         }
     </div>
-
-    @if (isInvalid() && errorText()) {
-        <div class="input-error">
-            {{ errorText() }}
-        </div>
-    }
 </div>

@@ -1,26 +1,34 @@
 <div class="login-page">
     <div class="login-card">
         <h2>Авторизация</h2>
-        <form
-            class="login-form"
-            [formGroup]="loginForm"
-            (ngSubmit)="onSubmit()"
-        >
-            <label for="nick-name">Имя пользователя: </label>
-            <input id="nick-name" type="text" formControlName="nickName" />
+        <div class="login-form-wrap">
+            <form
+                [formGroup]="loginForm"
+                (ngSubmit)="onSubmit()"
+                class="login-form"
+                novalidate
+            >
+                <label for="nick-name">Имя пользователя: </label>
+                <fox-input type="password" placeholder="Пароль" />
 
-            <label for="email">Электронная почта: </label>
-            <input id="email" type="text" formControlName="email" />
+                <!-- <fox-input
+                    label="Email"
+                    type="email"
+                    placeholder="you@example.com"
+                    [required]="true"
+                    autocomplete="email"
+                    formControlName="email"
+                />
 
-            <label for="password">Пароль: </label>
-            <fox-input [type]="'password'" [placeholder]="'пароль'" [errorText]="'error'" [isInvalid]="true"
-            />
-            <input id="password" type="text" formControlName="password" />
+                <label for="password">Пароль: </label>
+                <fox-input [type]="'password'" [placeholder]="'пароль'" />
+                <input id="password" type="text" formControlName="password" /> -->
 
-            <a>Забыли пароль?</a>
+                <a>Забыли пароль?</a>
 
-            <fox-button [text]="'Войти'"></fox-button>
-            <div>Нет аккаунта? <a href="">Зарегистрироваться</a></div>
-        </form>
+                <fox-button [text]="'Войти'"></fox-button>
+                <div>Нет аккаунта? <a href="">Зарегистрироваться</a></div>
+            </form>
+        </div>
     </div>
 </div>
