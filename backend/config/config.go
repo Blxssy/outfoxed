@@ -9,7 +9,12 @@ import (
 )
 
 type Config struct {
+	HTTP           HTTPConfig
 	PostgresConfig PostgresConfig
+}
+
+type HTTPConfig struct {
+	Addr string `env:"HTTP_ADDR" envDefault:":8080"`
 }
 
 type PostgresConfig struct {
