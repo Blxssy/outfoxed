@@ -17,7 +17,11 @@
                 class="inp__affix inp__affix--right inp__eye-toggle"
                 (click)="togglePassword()"
             >
-                {{ !passwordVisible() ? "O" : "X" }}
+                @if (!passwordVisible()) {
+                    <img src="icons8-show-24.png" alt="" />
+                } @else {
+                    <img src="icons8-hide-24.png" alt="" />
+                }
             </button>
         }
     </div>

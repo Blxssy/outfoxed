@@ -28,7 +28,7 @@
 // button colors
 
 .btn-orange {
-    background-color: var(--color-primary);
+    background: linear-gradient(180deg, #f8843a 0%, #e86020 100%);
 }
 
 .btn-green {
@@ -53,4 +53,8 @@
     height: 56px;
     padding: 16px 28px;
     font-size: 18px;
+}
+
+.btn--full {
+    width: 100%;
 }

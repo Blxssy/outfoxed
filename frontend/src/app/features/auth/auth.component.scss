@@ -1,0 +1,91 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #f5f0e8;
+    -webkit-font-smoothing: antialiased;
+}
+
+.auth-header {
+    position: relative;
+    background: linear-gradient(180deg, #d82020 0%, #b81818 60%, #901010 100%);
+    padding: 28px 24px 64px;
+    text-align: center;
+    overflow: hidden;
+    flex-shrink: 0;
+
+    &::after {
+        content: "";
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 56px;
+        background: #f5f0e8;
+        clip-path: ellipse(60% 100% at 50% 100%);
+    }
+}
+
+.auth-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &__img {
+        height: 120px;
+        width: auto;
+    }
+}
+
+.auth-switcher {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 20px;
+    display: inline-flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(6px);
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    animation: drop-in 0.5s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+    &__btn {
+        display: block;
+        padding: 9px 28px;
+        border-radius: 9px;
+        font-size: 16px;
+        color: #ffff;
+        text-decoration: none;
+        transition: color 120ms ease;
+        white-space: nowrap;
+
+        &:hover {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        &--active {
+            color: #ffffff;
+            background: linear-gradient(180deg, #f8843a 0%, #e86020 100%);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+
+            &:active {
+                transform: translateY(3px);
+                box-shadow:
+                    0 1px 0 #8b3010,
+                    0 2px 6px rgba(232, 96, 32, 0.3);
+            }
+        }
+    }
+}
+
+.auth-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 20px 40px;
+    margin-top: -20px;
+    position: relative;
+    z-index: 1;
+}

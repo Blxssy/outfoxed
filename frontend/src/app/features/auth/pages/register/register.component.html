@@ -1,22 +1,39 @@
+<!-- <h1 class="page-title">Регистрация</h1> -->
 <div class="register-page">
     <div class="register-card">
-        <h2>Регистрация</h2>
+        <div class="register-form-wrap">
+            <form
+                [formGroup]="registerForm"
+                (ngSubmit)="onSubmit()"
+                class="register-form"
+                novalidate
+            >
+                <fox-input
+                    type="text"
+                    placeholder="your_name"
+                    label="Имя пользователя:"
+                />
+                <fox-input
+                    type="password"
+                    placeholder="Пароль"
+                    label="Пароль:"
+                />
+                <fox-input
+                    type="password"
+                    placeholder="Пароль"
+                    label="Повторите пароль:"
+                />
 
-        <form class="register-form" [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-            <label for="nick-name">Имя пользователя: </label>
-            <input id="nick-name" type="text" formControlName="nickName" />
-
-            <label for="email">Электронная почта: </label>
-            <input id="email" type="text" formControlName="email" />
-
-            <label for="password">Пароль: </label>
-            <input id="password" type="text" formControlName="password" />
-
-            <label for="password">Повторите пароль: </label>
-            <input id="password" type="text" formControlName="password" />
-
-            <fox-button [text]="'Зарегистрироваться'"></fox-button>
-            <div>Уже есть аккаунт? <a href="">Войти</a></div>
-        </form>
+                <fox-button
+                    class="register-btn"
+                    [fullWidth]="true"
+                    [text]="'Войти'"
+                ></fox-button>
+                <div class="account-exists">
+                    Уже есть аккаунт?
+                    <a routerLink="/auth/login" class="to-login">Войти</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>

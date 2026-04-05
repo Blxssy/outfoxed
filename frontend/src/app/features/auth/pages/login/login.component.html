@@ -1,6 +1,6 @@
+<!-- <h1 class="page-title">Вход</h1> -->
 <div class="login-page">
     <div class="login-card">
-        <h2>Авторизация</h2>
         <div class="login-form-wrap">
             <form
                 [formGroup]="loginForm"
@@ -8,26 +8,28 @@
                 class="login-form"
                 novalidate
             >
-                <label for="nick-name">Имя пользователя: </label>
-                <fox-input type="password" placeholder="Пароль" />
-
-                <!-- <fox-input
-                    label="Email"
-                    type="email"
-                    placeholder="you@example.com"
-                    [required]="true"
-                    autocomplete="email"
-                    formControlName="email"
+                <fox-input
+                    type="text"
+                    placeholder="your_name"
+                    label="Имя пользователя:"
+                />
+                <fox-input
+                    type="password"
+                    placeholder="Пароль"
+                    label="Пароль:"
                 />
 
-                <label for="password">Пароль: </label>
-                <fox-input [type]="'password'" [placeholder]="'пароль'" />
-                <input id="password" type="text" formControlName="password" /> -->
+                <div class="forgot-wrap">
+                    <a class="forgot-link">Забыли пароль?</a>
+                </div>
 
-                <a>Забыли пароль?</a>
-
-                <fox-button [text]="'Войти'"></fox-button>
-                <div>Нет аккаунта? <a href="">Зарегистрироваться</a></div>
+                <fox-button [text]="'Войти'" [fullWidth]="true"></fox-button>
+                <div class="no-account">
+                    Нет аккаунта?
+                    <a routerLink="/auth/register" class="to-register">
+                        Зарегистрироваться</a
+                    >
+                </div>
             </form>
         </div>
     </div>
