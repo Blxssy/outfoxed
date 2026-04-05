@@ -1,56 +1,76 @@
 package domain
 
-type PendingAction string
-
-const (
-	PendingNone    PendingAction = "none"
-	PendingClue    PendingAction = "clue"
-	PendingSuspect PendingAction = "suspect"
-)
-
 type PlayerState struct {
-	ID       PlayerID `json:"id"`
-	Seat     int      `json:"seat"` // 0..3
-	Position int      `json:"position"`
+	UserID    string `json:"userId"`
+	Seat      int    `json:"seat"`
+	Name      string `json:"name"`
+	PawnCell  int    `json:"pawnCell"`
+	Connected bool   `json:"connected"`
+}
+
+type PlayerView struct {
+	UserID    string `json:"userId"`
+	Seat      int    `json:"seat"`
+	Name      string `json:"name"`
+	PawnCell  int    `json:"pawnCell"`
+	Connected bool   `json:"connected"`
 }
 
 type GameState struct {
-	ID      GameID     `json:"id"`
-	Status  GameStatus `json:"status"`
-	Phase   Phase      `json:"phase"`
-	Turn    int        `json:"turn"`    // номер хода
-	Version int        `json:"version"` // версия состояния
+	ID         string     `json:"id"`
+	Status     GameStatus `json:"status"`
+	Phase      GamePhase  `json:"phase"`
+	Result     GameResult `json:"result"`
+	Version    int        `json:"version"`
+	Turn       int        `json:"turn"`
+	ActiveSeat int        `json:"activeSeat"`
 
-	Players    []PlayerState `json:"players"`
-	ActiveSeat int           `json:"active_seat"` // чей ход
+	Players []PlayerState `json:"players"`
 
-	FoxTrack int `json:"fox_track"` // позиция лиса на дорожке
-	Goal     struct {
-		Type GoalType `json:"type"`
-		Set  bool     `json:"set"`
-	} `json:"goal"`
+	Board BoardState `json:"board"`
+	Fox   FoxState   `json:"fox"`
 
-	CluesFound int `json:"clues_found"`
-	CluesTotal int `json:"clues_total"`
+	Suspects []SuspectCard `json:"suspects"`
+	Clues    []ClueToken   `json:"clues"`
 
-	// Что нужно сделать после успешного броска
-	Pending PendingAction `json:"pending"`
-
-	Suspects []SuspectState
-	// Clues    []ClueState
-
-	FoxEscapeAt int        `json:"foxEscapeAt"` // порог, когда лис убежал
-	CulpritID   int        `json:"culpritId"`   // кто виновник
-	Result      GameResult `json:"result"`
+	TurnState TurnState   `json:"turnState"`
+	Secret    SecretState `json:"-"`
 }
 
-type GameResult string
+type SecretState struct {
+	CulpritSuspectID string                `json:"-"`
+	ClueTruth        map[string]TraitValue `json:"-"`
+}
 
-const (
-	ResultNone GameResult = "none"
-	ResultWin  GameResult = "win"
-	ResultLose GameResult = "lose"
-)
+type GameView struct {
+	ID         string     `json:"id"`
+	Status     GameStatus `json:"status"`
+	Phase      GamePhase  `json:"phase"`
+	Result     GameResult `json:"result,omitempty"`
+	Version    int        `json:"version"`
+	Turn       int        `json:"turn"`
+	ActiveSeat int        `json:"activeSeat"`
+
+	Me        PlayerView        `json:"me"`
+	Players   []PlayerView      `json:"players"`
+	Board     BoardView         `json:"board"`
+	Fox       FoxView           `json:"fox"`
+	Suspects  []SuspectCardView `json:"suspects"`
+	Clues     []ClueTokenView   `json:"clues"`
+	TurnState TurnView          `json:"turnState"`
+
+	AvailableActions []ActionType `json:"availableActions"`
+
+	Secret SecretState `json:"-"`
+}
+
+type TurnView struct {
+	Goal    TurnGoal      `json:"goal"`
+	Pending PendingAction `json:"pending"`
+
+	Roll *RollState `json:"roll,omitempty"`
+	Move *MoveState `json:"move,omitempty"`
+}
 
 func (gs GameState) ActivePlayer() (PlayerState, bool) {
 	for _, p := range gs.Players {
@@ -59,4 +79,31 @@ func (gs GameState) ActivePlayer() (PlayerState, bool) {
 		}
 	}
 	return PlayerState{}, false
+}
+
+func (gs GameState) FindPlayer(userID string) (PlayerState, bool) {
+	for _, p := range gs.Players {
+		if p.UserID == userID {
+			return p, true
+		}
+	}
+	return PlayerState{}, false
+}
+
+func (gs GameState) FindSuspectByID(id string) (*SuspectCard, bool) {
+	for i := range gs.Suspects {
+		if gs.Suspects[i].ID == id {
+			return &gs.Suspects[i], true
+		}
+	}
+	return nil, false
+}
+
+func (gs GameState) FindClueByID(id string) (*ClueToken, bool) {
+	for i := range gs.Clues {
+		if gs.Clues[i].ID == id {
+			return &gs.Clues[i], true
+		}
+	}
+	return nil, false
 }
