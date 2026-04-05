@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fox/config"
+	"fox/internal/modules/game/transport/ws"
 	httptransport "fox/internal/transport/http"
 	"fox/pkg/logger"
 	"fox/pkg/postgres"
@@ -49,6 +50,9 @@ func Run(cfg *config.Config) {
 	var authHandler http.Handler  // = authhttp.NewRouter(...)
 	var lobbyHandler http.Handler // = lobbyhttp.NewRouter(...)
 	var wsHandler http.Handler    // = wsHandler
+
+	hub := ws.NewHub()
+	_ = hub
 
 	router := httptransport.NewRouter(httptransport.Deps{
 		Auth:   authHandler,
