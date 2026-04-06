@@ -1,1 +1,3 @@
-<button [ngClass]="getButtonClasses()">{{ this.text() }}</button>
+<button [ngClass]="getButtonClasses()" [type]="type()">
+    {{ this.text() }}
+</button>

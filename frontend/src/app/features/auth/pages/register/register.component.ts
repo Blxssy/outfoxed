@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
+    FormBuilder,
     FormControl,
     FormGroup,
     ReactiveFormsModule,
@@ -8,6 +9,7 @@ import {
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { InputComponent } from '@fox/ui-kit/input';
 import { RouterLink } from '@angular/router';
+import { AuthService } from 'src/app/services/auth/auth.service';
 
 @Component({
     selector: 'app-register',
@@ -16,17 +18,24 @@ import { RouterLink } from '@angular/router';
     styleUrl: './register.component.scss',
 })
 export class RegisterComponent {
-    registerForm = new FormGroup({
-        nickName: new FormControl(''),
-        email: new FormControl('', [Validators.required, Validators.email]),
-        password: new FormControl('', [
-            Validators.required,
-            Validators.minLength(8),
-        ]),
+    private readonly fb = inject(FormBuilder);
+    private readonly authService = inject(AuthService);
+
+    readonly registerForm = this.fb.group({
+        nickName: ['', [Validators.required]],
+        password: ['', [Validators.required]],
+        confirmPassword: ['', [Validators.required]],
     });
+    // to do: валидаторы на сильный пароль
 
     onSubmit() {
-        // мб пригодится для проверки формы
-        console.log(this.registerForm.value);
+        if (this.registerForm.invalid) {
+            this.registerForm.markAllAsTouched();
+            // to do: настроить ошибки формы
+            return;
+        }
+
+        const { nickName, password, confirmPassword } =
+            this.registerForm.getRawValue();
     }
 }

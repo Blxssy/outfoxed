@@ -1,4 +1,3 @@
-<!-- <h1 class="page-title">Регистрация</h1> -->
 <div class="register-page">
     <div class="register-card">
         <div class="register-form-wrap">
@@ -12,22 +11,26 @@
                     type="text"
                     placeholder="your_name"
                     label="Имя пользователя:"
+                    formControlName="nickName"
                 />
                 <fox-input
                     type="password"
                     placeholder="Пароль"
                     label="Пароль:"
+                    formControlName="password"
                 />
                 <fox-input
                     type="password"
                     placeholder="Пароль"
                     label="Повторите пароль:"
+                    formControlName="confirmPassword"
                 />
 
                 <fox-button
                     class="register-btn"
                     [fullWidth]="true"
                     [text]="'Зарегистрироваться'"
+                    type="submit"
                 ></fox-button>
                 <div class="account-exists">
                     Уже есть аккаунт?

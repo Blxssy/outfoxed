@@ -1,4 +1,3 @@
-<!-- <h1 class="page-title">Вход</h1> -->
 <div class="login-page">
     <div class="login-card">
         <div class="login-form-wrap">
@@ -12,18 +11,24 @@
                     type="text"
                     placeholder="your_name"
                     label="Имя пользователя:"
+                    formControlName="nickName"
                 />
                 <fox-input
                     type="password"
                     placeholder="Пароль"
                     label="Пароль:"
+                    formControlName="password"
                 />
 
                 <div class="forgot-wrap">
                     <a class="forgot-link">Забыли пароль?</a>
                 </div>
 
-                <fox-button [text]="'Войти'" [fullWidth]="true"></fox-button>
+                <fox-button
+                    [text]="'Войти'"
+                    [fullWidth]="true"
+                    type="submit"
+                ></fox-button>
                 <div class="no-account">
                     Нет аккаунта?
                     <a routerLink="/auth/register" class="to-register">

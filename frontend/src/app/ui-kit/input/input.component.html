@@ -1,14 +1,18 @@
 <div [class]="wrapperClasses()">
     @if (label()) {
-        <label for="" class="inp__label">{{ label() }}</label>
+        <label [for]="inputId" class="inp__label">{{ label() }}</label>
     }
     <div class="inp__field-wrap">
         <input
-            [type]="type()"
+            [id]="inputId"
+            [type]="resolvedType()"
             [class]="inputClasses()"
             [placeholder]="placeholder()"
             [disabled]="disabled()"
-            [type]="resolvedType()"
+            [value]="value"
+            (input)="onInput($event)"
+            (blur)="onBlur()"
+            (focus)="onFocus()"
         />
 
         @if (type() === "password") {

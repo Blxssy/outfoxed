@@ -1,6 +1,8 @@
 import { Component, input } from '@angular/core';
 import { NgClass } from '@angular/common';
 
+type ButtonType = 'button' | 'submit' | 'reset';
+
 @Component({
     selector: 'fox-button',
     imports: [NgClass],
@@ -13,6 +15,7 @@ export class ButtonComponent {
     readonly size = input<string>('md');
     readonly color = input<string>('orange');
     readonly fullWidth = input<boolean>(false);
+    readonly type = input<ButtonType>('button');
 
     protected getButtonClasses(): string {
         return [
