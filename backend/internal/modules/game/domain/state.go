@@ -1,19 +1,11 @@
 package domain
 
 type PlayerState struct {
-	UserID    string `json:"userId"`
-	Seat      int    `json:"seat"`
-	Name      string `json:"name"`
-	PawnCell  int    `json:"pawnCell"`
-	Connected bool   `json:"connected"`
-}
-
-type PlayerView struct {
-	UserID    string `json:"userId"`
-	Seat      int    `json:"seat"`
-	Name      string `json:"name"`
-	PawnCell  int    `json:"pawnCell"`
-	Connected bool   `json:"connected"`
+	UserID    PlayerID `json:"userId"`
+	Seat      int      `json:"seat"`
+	Name      string   `json:"name"`
+	PawnCell  int      `json:"pawnCell"`
+	Connected bool     `json:"connected"`
 }
 
 type GameState struct {
@@ -42,36 +34,6 @@ type SecretState struct {
 	ClueTruth        map[string]TraitValue `json:"-"`
 }
 
-type GameView struct {
-	ID         string     `json:"id"`
-	Status     GameStatus `json:"status"`
-	Phase      GamePhase  `json:"phase"`
-	Result     GameResult `json:"result,omitempty"`
-	Version    int        `json:"version"`
-	Turn       int        `json:"turn"`
-	ActiveSeat int        `json:"activeSeat"`
-
-	Me        PlayerView        `json:"me"`
-	Players   []PlayerView      `json:"players"`
-	Board     BoardView         `json:"board"`
-	Fox       FoxView           `json:"fox"`
-	Suspects  []SuspectCardView `json:"suspects"`
-	Clues     []ClueTokenView   `json:"clues"`
-	TurnState TurnView          `json:"turnState"`
-
-	AvailableActions []ActionType `json:"availableActions"`
-
-	Secret SecretState `json:"-"`
-}
-
-type TurnView struct {
-	Goal    TurnGoal      `json:"goal"`
-	Pending PendingAction `json:"pending"`
-
-	Roll *RollState `json:"roll,omitempty"`
-	Move *MoveState `json:"move,omitempty"`
-}
-
 func (gs GameState) ActivePlayer() (PlayerState, bool) {
 	for _, p := range gs.Players {
 		if p.Seat == gs.ActiveSeat {
@@ -83,7 +45,7 @@ func (gs GameState) ActivePlayer() (PlayerState, bool) {
 
 func (gs GameState) FindPlayer(userID string) (PlayerState, bool) {
 	for _, p := range gs.Players {
-		if p.UserID == userID {
+		if string(p.UserID) == userID {
 			return p, true
 		}
 	}

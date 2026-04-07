@@ -19,19 +19,19 @@ type Auth interface {
 	ParseToken(token string) (string, error)
 }
 
-type GameStateGetter interface {
-	GetState(ctx context.Context, gameID string, userID string) (domain.GameState, error)
+type GameViewGetter interface {
+	GetView(ctx context.Context, gameID string, userID string) (domain.GameView, error)
 }
 
 type Handler struct {
-	hub   *Hub
-	auth  Auth
-	game  *service.Service
-	state GameStateGetter
+	hub  *Hub
+	auth Auth
+	game *service.Service
+	view GameViewGetter
 }
 
-func NewHandler(hub *Hub, auth Auth, game *service.Service, state GameStateGetter) *Handler {
-	return &Handler{hub: hub, auth: auth, game: game, state: state}
+func NewHandler(hub *Hub, auth Auth, game *service.Service, view GameViewGetter) *Handler {
+	return &Handler{hub: hub, auth: auth, game: game, view: view}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -60,8 +60,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	conn := NewConn(wsConn)
 
+	initialView, err := h.view.GetView(ctx, gameID, userID)
+	if err != nil {
+		conn.SendJSON(service.NewErrorResponse("", "forbidden", "You do not have access to this game."))
+		return
+	}
+
 	room := h.hub.GetRoom(gameID)
-	room.Add(conn)
+	room.Add(userID, conn)
 	defer func() {
 		room.Remove(conn)
 		conn.Close()
@@ -70,12 +76,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go conn.WriteLoop(ctx)
 
-	st, err := h.state.GetState(ctx, gameID, userID)
-	if err != nil {
-		conn.SendJSON(service.NewErrorResponse("", "forbidden", "You do not have access to this game."))
-		return
-	}
-	conn.SendJSON(service.NewUpdateResponse("", st, nil))
+	conn.SendJSON(service.NewUpdateResponse("", initialView, nil))
 
 	for {
 		readCtx, cancelRead := context.WithTimeout(ctx, 60*time.Second)
@@ -108,7 +109,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		room.Broadcast(service.NewUpdateResponse(req.ID, newState, events))
+		clients := room.Clients()
+		for _, client := range clients {
+			view := domain.BuildGameView(newState, domain.PlayerID(client.UserID))
+			client.Conn.SendJSON(service.NewUpdateResponse(req.ID, view, events))
+		}
 	}
 }
 

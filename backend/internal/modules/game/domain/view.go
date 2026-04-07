@@ -1,7 +1,43 @@
 package domain
 
-func BuildGameView(st GameState, userID string) GameView {
-	me, _ := st.FindPlayer(userID)
+type PlayerView struct {
+	UserID    PlayerID `json:"userId"`
+	Seat      int      `json:"seat"`
+	Name      string   `json:"name"`
+	PawnCell  int      `json:"pawnCell"`
+	Connected bool     `json:"connected"`
+}
+
+type TurnView struct {
+	Goal    TurnGoal      `json:"goal"`
+	Pending PendingAction `json:"pending"`
+
+	Roll *RollState `json:"roll,omitempty"`
+	Move *MoveState `json:"move,omitempty"`
+}
+
+type GameView struct {
+	ID         string     `json:"id"`
+	Status     GameStatus `json:"status"`
+	Phase      GamePhase  `json:"phase"`
+	Result     GameResult `json:"result,omitempty"`
+	Version    int        `json:"version"`
+	Turn       int        `json:"turn"`
+	ActiveSeat int        `json:"activeSeat"`
+
+	Me        PlayerView        `json:"me"`
+	Players   []PlayerView      `json:"players"`
+	Board     BoardView         `json:"board"`
+	Fox       FoxView           `json:"fox"`
+	Suspects  []SuspectCardView `json:"suspects"`
+	Clues     []ClueTokenView   `json:"clues"`
+	TurnState TurnView          `json:"turnState"`
+
+	AvailableActions []ActionType `json:"availableActions"`
+}
+
+func BuildGameView(st GameState, userID PlayerID) GameView {
+	me, _ := findPlayerByID(st.Players, userID)
 
 	view := GameView{
 		ID:         st.ID,
@@ -11,6 +47,7 @@ func BuildGameView(st GameState, userID string) GameView {
 		Version:    st.Version,
 		Turn:       st.Turn,
 		ActiveSeat: st.ActiveSeat,
+
 		Me: PlayerView{
 			UserID:    me.UserID,
 			Seat:      me.Seat,
@@ -18,9 +55,12 @@ func BuildGameView(st GameState, userID string) GameView {
 			PawnCell:  me.PawnCell,
 			Connected: me.Connected,
 		},
-		Players:          make([]PlayerView, 0, len(st.Players)),
-		Board:            buildBoardView(st.Board),
-		Fox:              FoxView{Track: st.Fox.Track, EscapeAt: st.Fox.EscapeAt},
+		Players: make([]PlayerView, 0, len(st.Players)),
+		Board:   buildBoardView(st.Board),
+		Fox: FoxView{
+			Track:    st.Fox.Track,
+			EscapeAt: st.Fox.EscapeAt,
+		},
 		Suspects:         make([]SuspectCardView, 0, len(st.Suspects)),
 		Clues:            make([]ClueTokenView, 0, len(st.Clues)),
 		TurnState:        TurnView(st.TurnState),
@@ -43,10 +83,13 @@ func BuildGameView(st GameState, userID string) GameView {
 			Revealed: s.Revealed,
 			Excluded: s.Excluded,
 		}
+
+		// traits отдаём только если карта уже раскрыта
 		if s.Revealed {
 			traits := s.Traits
 			item.Traits = &traits
 		}
+
 		view.Suspects = append(view.Suspects, item)
 	}
 
@@ -56,11 +99,14 @@ func BuildGameView(st GameState, userID string) GameView {
 			Revealed:  c.Revealed,
 			BoardCell: c.BoardCell,
 		}
+
+		// trait/result отдаём только если улика уже раскрыта
 		if c.Revealed {
 			trait := c.Trait
 			item.Trait = &trait
 			item.Result = c.Result
 		}
+
 		view.Clues = append(view.Clues, item)
 	}
 
@@ -84,26 +130,63 @@ func buildBoardView(board BoardState) BoardView {
 	return out
 }
 
-func AvailableActionsFor(st GameState, userID string) []ActionType {
-	player, ok := st.ActivePlayer()
-	if !ok || player.UserID != userID || st.Status != StatusActive {
+func findPlayerByID(players []PlayerState, userID PlayerID) (PlayerState, bool) {
+	for _, p := range players {
+		if p.UserID == userID {
+			return p, true
+		}
+	}
+	return PlayerState{}, false
+}
+
+func AvailableActionsFor(st GameState, userID PlayerID) []ActionType {
+	if st.Status != StatusActive {
+		return nil
+	}
+
+	activePlayer, ok := st.ActivePlayer()
+	if !ok || activePlayer.UserID != userID {
 		return nil
 	}
 
 	switch st.Phase {
 	case PhaseChooseGoal:
-		return []ActionType{ActionChooseGoal, ActionAccuse}
+		return []ActionType{
+			ActionChooseGoal,
+			ActionAccuse,
+		}
+
 	case PhaseRolling:
-		return []ActionType{ActionRollAuto, ActionAccuse}
+		return []ActionType{
+			ActionRollAuto,
+			ActionAccuse,
+		}
+
 	case PhaseMovePawn:
-		return []ActionType{ActionMovePawn, ActionAccuse}
+		return []ActionType{
+			ActionMovePawn,
+			ActionAccuse,
+		}
+
 	case PhaseResolveClue:
-		return []ActionType{ActionTakeClue, ActionAccuse}
+		return []ActionType{
+			ActionTakeClue,
+			ActionAccuse,
+		}
+
 	case PhaseRevealSuspects:
-		return []ActionType{ActionRevealSuspects, ActionAccuse}
+		return []ActionType{
+			ActionRevealSuspects,
+			ActionAccuse,
+		}
+
 	case PhaseEndTurn:
-		return []ActionType{ActionEndTurn, ActionAccuse}
+		return []ActionType{
+			ActionEndTurn,
+			ActionAccuse,
+		}
+
 	default:
-		return []ActionType{ActionAccuse}
+		return nil
 	}
 }
