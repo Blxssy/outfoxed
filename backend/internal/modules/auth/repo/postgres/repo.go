@@ -163,7 +163,7 @@ func (r *userRepo) GetUserByEmail(ctx context.Context, email string) (*models.Us
 		updated_at, 
 		last_seen_at
 	FROM users 
-	WHERE id=$1`
+	WHERE email=$1`
 	var user models.User
 	err := r.db.GetContext(
 		ctx,

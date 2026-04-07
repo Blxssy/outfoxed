@@ -1,6 +1,6 @@
 module fox
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/caarlos0/env/v6 v6.10.1
@@ -27,6 +27,6 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 )
