@@ -3,15 +3,17 @@ package app
 import (
 	"context"
 	"fox/config"
+	userPg "fox/internal/modules/auth/repo/postgres"
+	"fox/internal/modules/auth/service"
+	userhttp "fox/internal/modules/auth/transport/http"
 	httptransport "fox/internal/transport/http"
 	"fox/pkg/logger"
-	"fox/pkg/postgres"
+	pg "fox/pkg/postgres"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-	// authhttp "fox/internal/modules/auth/transport/http"
 	// lobbyhttp "fox/internal/modules/lobby/transport/http"
 	// gamews "fox/internal/modules/game/transport/ws"
 	// gamesvc "fox/internal/modules/game/service"
@@ -26,14 +28,14 @@ func Run(cfg *config.Config) {
 
 	log.Info().Msg("starting app")
 
-	postgresDB, err := postgres.New(cfg.PostgresConfig)
+	postgresDB, err := pg.New(cfg.PostgresConfig)
 	if err != nil {
 		log.Error().Err(err).Str("op", "postgres.New").Msg("error connecting to PostgreSQL")
 		return
 	}
 	log.Info().Msg("successfully connected to PostgreSQL")
 
-	v, err := postgres.RunMigrations(postgresDB.DB, cfg.PostgresConfig)
+	v, err := pg.RunMigrations(postgresDB.DB, cfg.PostgresConfig)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -45,15 +47,20 @@ func Run(cfg *config.Config) {
 		Uint("version", v).
 		Msg("successfully completed PostgreSQL migrations")
 
+	userRepo := userPg.NewUserRepository(postgresDB)
+	tokenManager := service.NewTokenManager(cfg.JWTSecret)
+	authService := service.NewService(userRepo, tokenManager)
+	authHandler := userhttp.NewHandler(authService)
+
 	// Заглушки
-	var authHandler http.Handler  // = authhttp.NewRouter(...)
-	var lobbyHandler http.Handler // = lobbyhttp.NewRouter(...)
-	var wsHandler http.Handler    // = wsHandler
+	// var authHandler http.Handler  // = authhttp.NewRouter(...)
+	// var lobbyHandler http.Handler // = lobbyhttp.NewRouter(...)
+	// var wsHandler http.Handler    // = wsHandler
 
 	router := httptransport.NewRouter(httptransport.Deps{
-		Auth:   authHandler,
-		Lobby:  lobbyHandler,
-		GameWS: wsHandler,
+		Auth: authHandler,
+		// Lobby:  lobbyHandler,
+		// GameWS: wsHandler,
 
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,

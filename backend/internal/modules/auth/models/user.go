@@ -11,5 +11,5 @@ type User struct {
 	Role         string     `json:"role" db:"role"`
 	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
-	LastLoginAt  *time.Time `json:"last_login_at,omitempty" db:"last_login_at"`
+	LastSeenAt   *time.Time `json:"last_seen_at,omitempty" db:"last_seen_at"`
 }

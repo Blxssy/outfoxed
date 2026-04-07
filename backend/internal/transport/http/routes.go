@@ -11,11 +11,11 @@ import (
 // Deps — зависимости роутера.
 type Deps struct {
 	// HTTP handlers (обычные REST)
-	Auth  http.Handler
-	Lobby http.Handler
+	Auth http.Handler
+	// Lobby http.Handler
 
 	// WS handler
-	GameWS http.Handler
+	// GameWS http.Handler
 
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -41,9 +41,9 @@ func NewRouter(d Deps) http.Handler {
 	})
 
 	// WebSocket routes
-	r.Route("/ws", func(r chi.Router) {
-		r.Get("/games/{id}", d.GameWS.ServeHTTP)
-	})
+	// r.Route("/ws", func(r chi.Router) {
+	// 	r.Get("/games/{id}", d.GameWS.ServeHTTP)
+	// })
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
@@ -52,9 +52,9 @@ func NewRouter(d Deps) http.Handler {
 			r.Mount("/auth", d.Auth)
 		}
 
-		if d.Lobby != nil {
-			r.Mount("/games", d.Lobby)
-		}
+		// if d.Lobby != nil {
+		// 	r.Mount("/games", d.Lobby)
+		// }
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

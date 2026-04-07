@@ -26,7 +26,7 @@ type UpdateUserParams struct {
 }
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, params CreateUserParams) error
+	CreateUser(ctx context.Context, params CreateUserParams) (*models.User, error)
 	UpdateUser(ctx context.Context, params UpdateUserParams) error
 	DeleteUserByID(ctx context.Context, id string) error
 
@@ -44,7 +44,7 @@ func NewUserRepository(db *sqlx.DB) UserRepo {
 	}
 }
 
-func (r *userRepo) CreateUser(ctx context.Context, params CreateUserParams) error {
+func (r *userRepo) CreateUser(ctx context.Context, params CreateUserParams) (*models.User, error) {
 	query := `
 	INSERT INTO users (
 		username,
@@ -56,9 +56,23 @@ func (r *userRepo) CreateUser(ctx context.Context, params CreateUserParams) erro
 	VALUES (
 		$1, $2, $3, $4, $5
 	)
+	RETURNING 
+		id,
+		username,
+		email,
+		password_hash,
+		is_guest,
+		role,
+		created_at,
+		updated_at,
+		last_seen_at
 	`
-	_, err := r.db.ExecContext(
+
+	var user models.User
+
+	err := r.db.GetContext(
 		ctx,
+		&user,
 		query,
 		params.Username,
 		params.Email,
@@ -66,7 +80,11 @@ func (r *userRepo) CreateUser(ctx context.Context, params CreateUserParams) erro
 		params.IsGuest,
 		params.Role,
 	)
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (r *userRepo) UpdateUser(ctx context.Context, params UpdateUserParams) error {
