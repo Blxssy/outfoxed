@@ -22,6 +22,7 @@ func NewHandler(service *service.Service) http.Handler {
 
 	r.Post("/guest", h.Guest)
 	r.Post("/register", h.Register)
+	r.Post("/login", h.Login)
 
 	return r
 }
@@ -59,7 +60,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	result, err := h.service.Register(r.Context(), req.Username, req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrorEmailAlreadyUsed) {
-			w.Write([]byte(err.Error()))
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		http.Error(w, "failed to register user", http.StatusInternalServerError)
@@ -67,4 +68,31 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, result)
+}
+
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.service.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		if errors.Is(err, service.ErrorInvalidCredentials) {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		http.Error(w, "failed to login user", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }

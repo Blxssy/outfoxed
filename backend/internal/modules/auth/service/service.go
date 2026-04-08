@@ -10,6 +10,7 @@ import (
 )
 
 var ErrorEmailAlreadyUsed = errors.New("The email address has already been used")
+var ErrorInvalidCredentials = errors.New("invalid email or password")
 
 type Service struct {
 	repo         postgres.UserRepo
@@ -83,6 +84,40 @@ func (s *Service) Register(ctx context.Context, username, email, password string
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	accessToken, err := s.tokenManager.GenerateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.tokenManager.GenerateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return &AuthResult{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *Service) Login(ctx context.Context, email, password string) (*AuthResult, error) {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrorInvalidCredentials
+		}
+		return nil, err
+	}
+
+	if user.IsGuest || user.PasswordHash == nil {
+		return nil, ErrorInvalidCredentials
+	}
+
+	if err := CheckPassword(password, *user.PasswordHash); err != nil {
+		return nil, ErrorInvalidCredentials
 	}
 
 	accessToken, err := s.tokenManager.GenerateAccessToken(user)
