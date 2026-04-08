@@ -1,11 +1,5 @@
 import { Component, inject } from '@angular/core';
-import {
-    FormBuilder,
-    FormControl,
-    FormGroup,
-    ReactiveFormsModule,
-    Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { InputComponent } from '@fox/ui-kit/input';
 import { RouterLink } from '@angular/router';
@@ -23,6 +17,7 @@ export class RegisterComponent {
 
     readonly registerForm = this.fb.group({
         nickName: ['', [Validators.required]],
+        email: ['', [Validators.required, Validators.email]],
         password: ['', [Validators.required]],
         confirmPassword: ['', [Validators.required]],
     });
@@ -35,7 +30,15 @@ export class RegisterComponent {
             return;
         }
 
-        const { nickName, password, confirmPassword } =
+        const { nickName, email, password, confirmPassword } =
             this.registerForm.getRawValue();
+
+        this.authService.register({
+            nickName: nickName!,
+            email: email!,
+            password: password!,
+            confirmPassword: confirmPassword!,
+        });
+        // fix !
     }
 }

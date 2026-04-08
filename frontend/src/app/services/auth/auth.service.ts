@@ -1,8 +1,11 @@
 import { Injectable } from '@angular/core';
+import { LoginRequest, RegisterRequest } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    login() {}
+    login(data: LoginRequest) {}
 
-    register() {}
+    register(data: RegisterRequest) {}
+
+    logout() {}
 }

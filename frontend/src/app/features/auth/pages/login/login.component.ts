@@ -30,5 +30,7 @@ export class LoginComponent {
         }
 
         const { nickName, password } = this.loginForm.getRawValue();
+
+        this.authService.login({ nickName: nickName!, password: password! }); //fix !
     }
 }
