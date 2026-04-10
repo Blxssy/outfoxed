@@ -11,6 +11,7 @@ import (
 type Config struct {
 	HTTP           HTTPConfig
 	PostgresConfig PostgresConfig
+	JWT
 }
 
 type HTTPConfig struct {
@@ -19,6 +20,10 @@ type HTTPConfig struct {
 
 type PostgresConfig struct {
 	DataSource string `env:"DB_DATA_SOURCE,required"`
+}
+
+type JWT struct {
+	JWTSecret string `env:"JWT_SECRET,required"`
 }
 
 var (
