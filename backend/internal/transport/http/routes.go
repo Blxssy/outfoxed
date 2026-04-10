@@ -15,7 +15,7 @@ type Deps struct {
 	// Lobby http.Handler
 
 	// WS handler
-	// GameWS http.Handler
+	GameWS http.Handler
 
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -40,10 +40,10 @@ func NewRouter(d Deps) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// WebSocket routes
-	// r.Route("/ws", func(r chi.Router) {
-	// 	r.Get("/games/{id}", d.GameWS.ServeHTTP)
-	// })
+	//WebSocket routes
+	r.Route("/ws", func(r chi.Router) {
+		r.Get("/games/{id}", d.GameWS.ServeHTTP)
+	})
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {

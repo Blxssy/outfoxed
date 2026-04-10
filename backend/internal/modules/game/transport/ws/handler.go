@@ -8,30 +8,24 @@ import (
 	"strings"
 	"time"
 
+	authService "fox/internal/modules/auth/service"
 	"fox/internal/modules/game/domain"
 	"fox/internal/modules/game/service"
 
 	cws "github.com/coder/websocket"
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
 )
 
-type Auth interface {
-	ParseToken(token string) (string, error)
-}
-
-type GameViewGetter interface {
-	GetView(ctx context.Context, gameID string, userID string) (domain.GameView, error)
-}
-
 type Handler struct {
-	hub  *Hub
-	auth Auth
-	game *service.Service
-	view GameViewGetter
+	log          zerolog.Logger
+	hub          *Hub
+	gameService  *service.Service
+	tokenManager *authService.TokenManager
 }
 
-func NewHandler(hub *Hub, auth Auth, game *service.Service, view GameViewGetter) *Handler {
-	return &Handler{hub: hub, auth: auth, game: game, view: view}
+func NewHandler(log zerolog.Logger, hub *Hub, gameService *service.Service, tokenManager *authService.TokenManager) *Handler {
+	return &Handler{log: log, hub: hub, gameService: gameService, tokenManager: tokenManager}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +54,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	conn := NewConn(wsConn)
 
-	initialView, err := h.view.GetView(ctx, gameID, userID)
+	initialView, err := h.gameService.GetView(ctx, gameID, userID)
 	if err != nil {
 		conn.SendJSON(service.NewErrorResponse("", "forbidden", "You do not have access to this game."))
 		return
@@ -103,7 +97,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		newState, events, err := h.game.ApplyCommand(ctx, gameID, userID, cmd)
+		newState, events, err := h.gameService.ApplyCommand(ctx, gameID, userID, cmd)
 		if err != nil {
 			conn.SendJSON(service.ErrorResponse(req.ID, err))
 			continue
@@ -119,17 +113,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) userIDFromRequest(r *http.Request) (string, error) {
 	// 1) Bearer header
-	if ah := r.Header.Get("Authorization"); ah != "" {
+	if ah := strings.TrimSpace(r.Header.Get("Authorization")); ah != "" {
 		parts := strings.SplitN(ah, " ", 2)
-		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") && parts[1] != "" {
-			return h.auth.ParseToken(parts[1])
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || strings.TrimSpace(parts[1]) == "" {
+			return "", errors.New("bad authorization header")
 		}
-		return "", errors.New("bad authorization header")
+
+		claims, err := h.tokenManager.ParseAccessToken(parts[1])
+		if err != nil {
+			return "", err
+		}
+		return claims.UserID, nil
 	}
 
 	// 2) Query token
-	if token := r.URL.Query().Get("token"); token != "" {
-		return h.auth.ParseToken(token)
+	if token := strings.TrimSpace(r.URL.Query().Get("token")); token != "" {
+		claims, err := h.tokenManager.ParseAccessToken(token)
+		if err != nil {
+			return "", err
+		}
+		return claims.UserID, nil
 	}
 
 	return "", errors.New("missing authorization")

@@ -6,13 +6,15 @@ import (
 	"fmt"
 
 	"fox/internal/modules/game/repo"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Repo struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func New(db *sql.DB) *Repo {
+func New(db *sqlx.DB) *Repo {
 	return &Repo{db: db}
 }
 
