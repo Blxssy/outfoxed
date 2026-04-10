@@ -5,22 +5,31 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"fox/internal/modules/auth/models"
 	"fox/internal/modules/auth/repo/postgres"
 	"time"
 )
 
 var ErrorEmailAlreadyUsed = errors.New("The email address has already been used")
 var ErrorInvalidCredentials = errors.New("invalid email or password")
+var ErrorInvalidRefreshToken = errors.New("invalid refresh token")
+var ErrorRefreshTokenExpired = errors.New("refresh token expired")
 
 type Service struct {
-	repo         postgres.UserRepo
-	tokenManager *TokenManager
+	userRepo         postgres.UserRepo
+	refreshTokenRepo postgres.RefreshTokenRepo
+	tokenManager     *TokenManager
 }
 
-func NewService(repo postgres.UserRepo, tm *TokenManager) *Service {
+func NewService(
+	userRepo postgres.UserRepo,
+	refreshTokenRepo postgres.RefreshTokenRepo,
+	tm *TokenManager,
+) *Service {
 	return &Service{
-		repo:         repo,
-		tokenManager: tm,
+		userRepo:         userRepo,
+		refreshTokenRepo: refreshTokenRepo,
+		tokenManager:     tm,
 	}
 }
 
@@ -31,7 +40,7 @@ func generateGuestUsername() string {
 func (s *Service) CreateGuest(ctx context.Context) (*AuthResult, error) {
 	username := generateGuestUsername()
 
-	user, err := s.repo.CreateUser(ctx, postgres.CreateUserParams{
+	user, err := s.userRepo.CreateUser(ctx, postgres.CreateUserParams{
 		Username:     username,
 		Email:        nil,
 		PasswordHash: nil,
@@ -39,7 +48,7 @@ func (s *Service) CreateGuest(ctx context.Context) (*AuthResult, error) {
 		Role:         "player",
 	})
 	if err != nil {
-		return nil, fmt.Errorf("s.repo.CreateUser: %w", err)
+		return nil, err
 	}
 
 	accessToken, err := s.tokenManager.GenerateAccessToken(user)
@@ -52,6 +61,15 @@ func (s *Service) CreateGuest(ctx context.Context) (*AuthResult, error) {
 		return nil, err
 	}
 
+	_, err = s.refreshTokenRepo.CreateRefreshToken(ctx, postgres.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &AuthResult{
 		User:         user,
 		AccessToken:  accessToken,
@@ -60,7 +78,7 @@ func (s *Service) CreateGuest(ctx context.Context) (*AuthResult, error) {
 }
 
 func (s *Service) Register(ctx context.Context, username, email, password string) (*AuthResult, error) {
-	existingUser, err := s.repo.GetUserByEmail(ctx, email)
+	existingUser, err := s.userRepo.GetUserByEmail(ctx, email)
 	if err == nil && existingUser != nil {
 		return nil, ErrorEmailAlreadyUsed
 	}
@@ -75,7 +93,7 @@ func (s *Service) Register(ctx context.Context, username, email, password string
 		return nil, err
 	}
 
-	user, err := s.repo.CreateUser(ctx, postgres.CreateUserParams{
+	user, err := s.userRepo.CreateUser(ctx, postgres.CreateUserParams{
 		Username:     username,
 		Email:        &email,
 		PasswordHash: passwordHash,
@@ -96,6 +114,15 @@ func (s *Service) Register(ctx context.Context, username, email, password string
 		return nil, err
 	}
 
+	_, err = s.refreshTokenRepo.CreateRefreshToken(ctx, postgres.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &AuthResult{
 		User:         user,
 		AccessToken:  accessToken,
@@ -104,7 +131,7 @@ func (s *Service) Register(ctx context.Context, username, email, password string
 }
 
 func (s *Service) Login(ctx context.Context, email, password string) (*AuthResult, error) {
-	user, err := s.repo.GetUserByEmail(ctx, email)
+	user, err := s.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrorInvalidCredentials
@@ -134,5 +161,64 @@ func (s *Service) Login(ctx context.Context, email, password string) (*AuthResul
 		User:         user,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *Service) GetUserByID(ctx context.Context, id string) (*models.User, error) {
+	return s.userRepo.GetUserByID(ctx, id)
+}
+
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (*RefreshResult, error) {
+	tokenRecord, err := s.refreshTokenRepo.GetRefreshTokenByToken(ctx, refreshToken)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrorInvalidRefreshToken
+		}
+		return nil, err
+	}
+
+	if tokenRecord.RevokedAt != nil {
+		return nil, ErrorInvalidRefreshToken
+	}
+
+	if time.Now().After(tokenRecord.ExpiresAt) {
+		return nil, ErrorRefreshTokenExpired
+	}
+
+	user, err := s.userRepo.GetUserByID(ctx, tokenRecord.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrorInvalidRefreshToken
+		}
+		return nil, err
+	}
+
+	newAccessToken, err := s.tokenManager.GenerateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshToken, err := s.tokenManager.GenerateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.refreshTokenRepo.RevokeRefreshTokenByToken(ctx, refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.refreshTokenRepo.CreateRefreshToken(ctx, postgres.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Token:     newRefreshToken,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &RefreshResult{
+		AccessToken:  newAccessToken,
+		RefreshToken: newRefreshToken,
 	}, nil
 }

@@ -48,9 +48,10 @@ func Run(cfg *config.Config) {
 		Msg("successfully completed PostgreSQL migrations")
 
 	userRepo := userPg.NewUserRepository(postgresDB)
+	refreshTokenRepo := userPg.NewRefreshTokenRepository(postgresDB)
 	tokenManager := service.NewTokenManager(cfg.JWTSecret)
-	authService := service.NewService(userRepo, tokenManager)
-	authHandler := userhttp.NewHandler(authService)
+	authService := service.NewService(userRepo, refreshTokenRepo, tokenManager)
+	authHandler := userhttp.NewHandler(authService, tokenManager)
 
 	// Заглушки
 	// var authHandler http.Handler  // = authhttp.NewRouter(...)
