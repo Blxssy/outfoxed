@@ -9,6 +9,7 @@ import (
 	"fox/internal/modules/game/domain"
 	gamePg "fox/internal/modules/game/repo/postgres"
 	service2 "fox/internal/modules/game/service"
+	gamehttp "fox/internal/modules/game/transport/http"
 	"fox/internal/modules/game/transport/ws"
 	httptransport "fox/internal/transport/http"
 	"fox/pkg/logger"
@@ -66,14 +67,12 @@ func Run(cfg *config.Config) {
 	gameService := service2.New(gameRepo, rng)
 	hub := ws.NewHub()
 
+	gameHandler := gamehttp.NewHandler(gameService, tokenManager)
 	wsHandler := ws.NewHandler(log, hub, gameService, tokenManager)
 
-	// Заглушки
-	// var lobbyHandler http.Handler // = lobbyhttp.NewRouter(...)
-
 	router := httptransport.NewRouter(httptransport.Deps{
-		Auth: authHandler,
-		// Lobby:  lobbyHandler,
+		Auth:   authHandler,
+		Game:   gameHandler,
 		GameWS: wsHandler,
 
 		ReadTimeout:  10 * time.Second,

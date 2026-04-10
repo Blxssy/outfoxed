@@ -54,3 +54,14 @@ func (r *Room) Size() int {
 	defer r.mu.RUnlock()
 	return len(r.clients)
 }
+
+func (r *Room) ConnectedUserIDs() map[string]bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make(map[string]bool, len(r.clients))
+	for _, client := range r.clients {
+		out[client.UserID] = true
+	}
+	return out
+}

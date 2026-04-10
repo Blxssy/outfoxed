@@ -12,6 +12,13 @@ type GameRow struct {
 	Version     int
 	FoxEscapeAt int
 	CulpritID   int
+	CreatedBy   sql.NullString
+}
+
+type GamePlayerRow struct {
+	UserID   string
+	Username string
+	Seat     int
 }
 
 type Tx interface {
@@ -21,6 +28,12 @@ type Tx interface {
 
 type GameRepo interface {
 	BeginTx(ctx context.Context) (*sql.Tx, error)
+
+	CreateGame(ctx context.Context, tx *sql.Tx, createdBy string, stateJSON []byte) (GameRow, error)
+	AddPlayer(ctx context.Context, tx *sql.Tx, gameID string, userID string, seat int) error
+	GetPlayers(ctx context.Context, gameID string) ([]GamePlayerRow, error)
+	GetPlayersForUpdate(ctx context.Context, tx *sql.Tx, gameID string) ([]GamePlayerRow, error)
+	FindUnfinishedGameForUser(ctx context.Context, tx *sql.Tx, userID string) (GameRow, error)
 
 	// Загружаем игру и блокируем строку до конца транзакции
 	GetGameForUpdate(ctx context.Context, tx *sql.Tx, gameID string) (GameRow, error)
@@ -35,5 +48,5 @@ type GameRepo interface {
 	IsPlayerInGameReadonly(ctx context.Context, gameID string, userID string) (bool, error)
 
 	// Сохраняем новый state и версию
-	UpdateState(ctx context.Context, tx *sql.Tx, gameID string, newStateJSON []byte, newVersion int) error
+	UpdateState(ctx context.Context, tx *sql.Tx, gameID string, status string, newStateJSON []byte, newVersion int) error
 }

@@ -26,12 +26,12 @@ type GameState struct {
 	Clues    []ClueToken   `json:"clues"`
 
 	TurnState TurnState   `json:"turnState"`
-	Secret    SecretState `json:"-"`
+	Secret    SecretState `json:"secret"`
 }
 
 type SecretState struct {
-	CulpritSuspectID string                `json:"-"`
-	ClueTruth        map[string]TraitValue `json:"-"`
+	CulpritSuspectID string                `json:"culpritSuspectId"`
+	ClueTruth        map[string]TraitValue `json:"clueTruth"`
 }
 
 func (gs GameState) ActivePlayer() (PlayerState, bool) {

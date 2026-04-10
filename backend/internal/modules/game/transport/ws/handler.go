@@ -54,9 +54,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	conn := NewConn(wsConn)
 
-	initialView, err := h.gameService.GetView(ctx, gameID, userID)
+	state, err := h.gameService.GetState(ctx, gameID, userID)
 	if err != nil {
-		conn.SendJSON(service.NewErrorResponse("", "forbidden", "You do not have access to this game."))
+		h.log.Warn().
+			Err(err).
+			Str("game_id", gameID).
+			Str("user_id", userID).
+			Msg("websocket initial view denied")
+		_ = writeJSON(ctx, wsConn, service.ErrorResponse("", err))
 		return
 	}
 
@@ -64,20 +69,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	room.Add(userID, conn)
 	defer func() {
 		room.Remove(conn)
+		h.broadcastPresence(gameID, userID, room)
 		conn.Close()
 		h.hub.RemoveRoomIfEmpty(gameID)
 	}()
 
 	go conn.WriteLoop(ctx)
-
-	conn.SendJSON(service.NewUpdateResponse("", initialView, nil))
+	h.broadcastState(room, state, "", nil)
 
 	for {
-		readCtx, cancelRead := context.WithTimeout(ctx, 60*time.Second)
-		msgType, data, err := wsConn.Read(readCtx)
-		cancelRead()
-
+		msgType, data, err := wsConn.Read(ctx)
 		if err != nil {
+			h.log.Debug().
+				Err(err).
+				Str("game_id", gameID).
+				Str("user_id", userID).
+				Msg("websocket read loop stopped")
 			return
 		}
 		if msgType != cws.MessageText {
@@ -103,12 +110,60 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		clients := room.Clients()
-		for _, client := range clients {
-			view := domain.BuildGameView(newState, domain.PlayerID(client.UserID))
-			client.Conn.SendJSON(service.NewUpdateResponse(req.ID, view, events))
-		}
+		h.broadcastState(room, newState, req.ID, events)
 	}
+}
+
+func (h *Handler) broadcastPresence(gameID string, userID string, room *Room) {
+	if room.Size() == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	state, err := h.gameService.GetState(ctx, gameID, userID)
+	if err != nil {
+		h.log.Debug().
+			Err(err).
+			Str("game_id", gameID).
+			Str("user_id", userID).
+			Msg("failed to load state for websocket presence broadcast")
+		return
+	}
+
+	h.broadcastState(room, state, "", nil)
+}
+
+func (h *Handler) broadcastState(room *Room, state domain.GameState, reqID string, events []domain.Event) {
+	clients := room.Clients()
+	connected := room.ConnectedUserIDs()
+
+	for _, client := range clients {
+		view := domain.BuildGameView(state, domain.PlayerID(client.UserID))
+		applyConnectedState(&view, connected)
+		client.Conn.SendJSON(service.NewUpdateResponse(reqID, view, events))
+	}
+}
+
+func applyConnectedState(view *domain.GameView, connected map[string]bool) {
+	view.Me.Connected = connected[view.Me.UserID.String()]
+
+	for i := range view.Players {
+		view.Players[i].Connected = connected[view.Players[i].UserID.String()]
+	}
+}
+
+func writeJSON(ctx context.Context, wsConn *cws.Conn, v any) error {
+	payload, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	writeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	return wsConn.Write(writeCtx, cws.MessageText, payload)
 }
 
 func (h *Handler) userIDFromRequest(r *http.Request) (string, error) {

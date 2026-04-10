@@ -46,6 +46,9 @@ func ToWSError(err error) WSError {
 
 	case errors.Is(err, ErrForbidden):
 		return WSError{Code: "forbidden", Message: "You do not have access to this game."}
+
+	case errors.Is(err, ErrGameNotFound):
+		return WSError{Code: "game_not_found", Message: "The game was not found."}
 	}
 
 	// Любая другая ошибка (500).
