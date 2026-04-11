@@ -18,3 +18,7 @@ func getClaims(ctx context.Context) (*service.TokenClaims, bool) {
 	claims, ok := ctx.Value(claimsContextKey).(*service.TokenClaims)
 	return claims, ok
 }
+
+func GetClaims(ctx context.Context) (*service.TokenClaims, bool) {
+	return getClaims(ctx)
+}

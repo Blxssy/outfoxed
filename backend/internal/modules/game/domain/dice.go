@@ -3,21 +3,21 @@ package domain
 type DiceFace string
 
 const (
-	FaceFootprint DiceFace = "footprint"
-	FaceEye       DiceFace = "eye"
+	FaceFootprint string = "footprint"
+	FaceEye       string = "eye"
 )
 
 type RollResult struct {
-	Goal     GoalType   `json:"goal"`
-	Attempts int        `json:"attempts"`
-	Faces    []DiceFace `json:"faces"`
-	Success  bool       `json:"success"`
+	Goal     GoalType `json:"goal"`
+	Attempts int      `json:"attempts"`
+	Faces    []string `json:"faces"`
+	Success  bool     `json:"success"`
 }
 
 func RollForGoal(goal GoalType, rng RNG) RollResult {
 	want := faceForGoal(goal)
 
-	kept := make([]DiceFace, 0, 3)
+	kept := make([]string, 0, 3)
 	attempts := 0
 
 	for attempts < 3 && len(kept) < 3 {
@@ -32,7 +32,7 @@ func RollForGoal(goal GoalType, rng RNG) RollResult {
 		}
 	}
 
-	faces := make([]DiceFace, 0, 3)
+	faces := make([]string, 0, 3)
 	for i := 0; i < len(kept); i++ {
 		faces = append(faces, want)
 	}
@@ -48,21 +48,21 @@ func RollForGoal(goal GoalType, rng RNG) RollResult {
 	}
 }
 
-func faceForGoal(goal GoalType) DiceFace {
+func faceForGoal(goal GoalType) string {
 	if goal == GoalClue {
 		return FaceFootprint
 	}
 	return FaceEye
 }
 
-func rollOneDice(rng RNG) DiceFace {
+func rollOneDice(rng RNG) string {
 	if rng.Intn(2) == 0 {
 		return FaceFootprint
 	}
 	return FaceEye
 }
 
-func oppositeFace(f DiceFace) DiceFace {
+func oppositeFace(f string) string {
 	if f == FaceFootprint {
 		return FaceEye
 	}

@@ -19,4 +19,9 @@ var (
 	ErrGameFinished       = errors.New("game is finished")
 	ErrSuspectNotRevealed = errors.New("suspect is not revealed")
 	ErrSuspectExcluded    = errors.New("suspect is excluded")
+
+	ErrInvalidMove            = errors.New("invalid move")
+	ErrInvalidRevealSelection = errors.New("invalid reveal selection")
+	ErrSuspectNotFound        = errors.New("suspect not found")
+	ErrSuspectAlreadyRevealed = errors.New("suspect already revealed")
 )

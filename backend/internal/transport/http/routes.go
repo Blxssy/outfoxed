@@ -12,10 +12,10 @@ import (
 type Deps struct {
 	// HTTP handlers (обычные REST)
 	Auth http.Handler
-	// Lobby http.Handler
+	Game http.Handler
 
 	// WS handler
-	// GameWS http.Handler
+	GameWS http.Handler
 
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -31,30 +31,30 @@ func NewRouter(d Deps) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Logger)
 
-	// Таймаут на обработку запроса
-	r.Use(middleware.Timeout(15 * time.Second))
-
 	// Healthcheck
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// WebSocket routes
-	// r.Route("/ws", func(r chi.Router) {
-	// 	r.Get("/games/{id}", d.GameWS.ServeHTTP)
-	// })
+	//WebSocket routes
+	r.Route("/ws", func(r chi.Router) {
+		r.Get("/games/{id}", d.GameWS.ServeHTTP)
+	})
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
+		// Таймаут только для обычного HTTP API. Для websocket его нельзя вешать на общий роутер.
+		r.Use(middleware.Timeout(15 * time.Second))
+
 		// Монтируем auth
 		if d.Auth != nil {
 			r.Mount("/auth", d.Auth)
 		}
 
-		// if d.Lobby != nil {
-		// 	r.Mount("/games", d.Lobby)
-		// }
+		if d.Game != nil {
+			r.Mount("/games", d.Game)
+		}
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

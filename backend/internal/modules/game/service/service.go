@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 
@@ -18,28 +19,6 @@ type Service struct {
 
 func New(r repo.GameRepo, rng RNGFactory) *Service {
 	return &Service{repo: r, rng: rng}
-}
-
-func (s *Service) GetState(ctx context.Context, gameID string, userID string) (domain.GameState, error) {
-	ok, err := s.repo.IsPlayerInGameReadonly(ctx, gameID, userID)
-	if err != nil {
-		return domain.GameState{}, fmt.Errorf("check player in game: %w", err)
-	}
-	if !ok {
-		return domain.GameState{}, ErrForbidden
-	}
-
-	row, err := s.repo.GetGame(ctx, gameID)
-	if err != nil {
-		return domain.GameState{}, fmt.Errorf("get game: %w", err)
-	}
-
-	var st domain.GameState
-	if err := json.Unmarshal(row.StateJSON, &st); err != nil {
-		return domain.GameState{}, fmt.Errorf("unmarshal state: %w", err)
-	}
-
-	return st, nil
 }
 
 // ApplyCommand — главная операция: применить команду игрока к игре атомарно.
@@ -87,7 +66,7 @@ func (s *Service) ApplyCommand(ctx context.Context, gameID string, userID string
 	}
 
 	// Сохраняем новый state + версию
-	if err = s.repo.UpdateState(ctx, tx, gameID, stateJSON, newState.Version); err != nil {
+	if err = s.repo.UpdateState(ctx, tx, gameID, string(newState.Status), stateJSON, newState.Version); err != nil {
 		return domain.GameState{}, nil, fmt.Errorf("update state: %w", err)
 	}
 
@@ -96,4 +75,38 @@ func (s *Service) ApplyCommand(ctx context.Context, gameID string, userID string
 	}
 
 	return newState, events, nil
+}
+
+func (s *Service) GetState(ctx context.Context, gameID string, userID string) (domain.GameState, error) {
+	row, err := s.repo.GetGame(ctx, gameID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return domain.GameState{}, ErrGameNotFound
+		}
+		return domain.GameState{}, fmt.Errorf("get game: %w", err)
+	}
+
+	ok, err := s.repo.IsPlayerInGameReadonly(ctx, gameID, userID)
+	if err != nil {
+		return domain.GameState{}, fmt.Errorf("check player in game: %w", err)
+	}
+	if !ok {
+		return domain.GameState{}, ErrForbidden
+	}
+
+	var st domain.GameState
+	if err := json.Unmarshal(row.StateJSON, &st); err != nil {
+		return domain.GameState{}, fmt.Errorf("unmarshal state: %w", err)
+	}
+
+	return st, nil
+}
+
+func (s *Service) GetView(ctx context.Context, gameID string, userID string) (domain.GameView, error) {
+	st, err := s.GetState(ctx, gameID, userID)
+	if err != nil {
+		return domain.GameView{}, err
+	}
+
+	return domain.BuildGameView(st, domain.PlayerID(userID)), nil
 }

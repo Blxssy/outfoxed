@@ -6,9 +6,15 @@ import (
 	userPg "fox/internal/modules/auth/repo/postgres"
 	"fox/internal/modules/auth/service"
 	userhttp "fox/internal/modules/auth/transport/http"
+	"fox/internal/modules/game/domain"
+	gamePg "fox/internal/modules/game/repo/postgres"
+	service2 "fox/internal/modules/game/service"
+	gamehttp "fox/internal/modules/game/transport/http"
+	"fox/internal/modules/game/transport/ws"
 	httptransport "fox/internal/transport/http"
 	"fox/pkg/logger"
 	pg "fox/pkg/postgres"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -53,15 +59,21 @@ func Run(cfg *config.Config) {
 	authService := service.NewService(userRepo, refreshTokenRepo, tokenManager)
 	authHandler := userhttp.NewHandler(authService, tokenManager)
 
-	// Заглушки
-	// var authHandler http.Handler  // = authhttp.NewRouter(...)
-	// var lobbyHandler http.Handler // = lobbyhttp.NewRouter(...)
-	// var wsHandler http.Handler    // = wsHandler
+	gameRepo := gamePg.New(postgresDB)
+	rng := func() domain.RNG {
+		src := rand.NewSource(time.Now().UnixNano())
+		return domain.NewStdRNG(rand.New(src))
+	}
+	gameService := service2.New(gameRepo, rng)
+	hub := ws.NewHub()
+
+	gameHandler := gamehttp.NewHandler(gameService, tokenManager)
+	wsHandler := ws.NewHandler(log, hub, gameService, tokenManager)
 
 	router := httptransport.NewRouter(httptransport.Deps{
-		Auth: authHandler,
-		// Lobby:  lobbyHandler,
-		// GameWS: wsHandler,
+		Auth:   authHandler,
+		Game:   gameHandler,
+		GameWS: wsHandler,
 
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,

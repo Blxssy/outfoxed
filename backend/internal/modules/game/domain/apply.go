@@ -9,185 +9,318 @@ func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
 	}
 
 	activePlayer, ok := s.ActivePlayer()
-	if !ok || activePlayer.ID != cmd.Actor() {
-		return GameState{}, nil, ErrNotYourTurn
+	if !ok || string(activePlayer.UserID) != string(cmd.Actor()) {
+		return s, nil, ErrNotYourTurn
 	}
 
 	switch c := cmd.(type) {
 	case ChooseGoalCommand:
-		return applyChoseGoal(s, c)
+		return applyChooseGoal(s, c)
+
 	case RollAutoCommand:
 		return applyRollAuto(s, c, rng)
-	case EndTurnCommand:
-		return applyEndTurn(s, c)
+
+	case MovePawnCommand:
+		return applyMovePawn(s, c)
+
 	case TakeClueCommand:
 		return applyTakeClue(s, c)
+
 	case RevealSuspectsCommand:
 		return applyRevealSuspects(s, c)
+
 	case AccuseCommand:
 		return applyAccuse(s, c)
+
+	case EndTurnCommand:
+		return applyEndTurn(s, c)
 
 	default:
 		return s, nil, ErrInvalidPhase
 	}
 }
 
-func applyChoseGoal(s GameState, c ChooseGoalCommand) (GameState, []Event, error) {
+func applyChooseGoal(s GameState, c ChooseGoalCommand) (GameState, []Event, error) {
 	if s.Phase != PhaseChooseGoal {
 		return s, nil, ErrInvalidPhase
 	}
-
-	if s.Goal.Set {
+	if s.TurnState.Goal.Set {
 		return s, nil, ErrGoalAlreadySet
 	}
 
-	s.Goal.Type = c.Goal
-	s.Goal.Set = true
+	s.TurnState.Goal = TurnGoal{
+		Set:  true,
+		Type: c.Goal,
+	}
+	s.TurnState.Pending = PendingNone
+	s.TurnState.Roll = nil
+	s.TurnState.Move = nil
+
 	s.Phase = PhaseRolling
 	s.Version++
 
-	ev := Event{
-		Type: EvGoalChosen,
-		Data: map[string]any{"goal": c.Goal},
-	}
-
-	return s, []Event{ev}, nil
+	return s, []Event{
+		{
+			Type: EvGoalChosen,
+			Data: map[string]any{
+				"goal": c.Goal,
+			},
+		},
+	}, nil
 }
 
 func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event, error) {
 	if s.Phase != PhaseRolling {
 		return s, nil, ErrInvalidPhase
 	}
-	if !s.Goal.Set {
+	if !s.TurnState.Goal.Set {
 		return s, nil, ErrGoalNotSet
 	}
 
-	res := RollForGoal(s.Goal.Type, rng)
+	res := RollForGoal(s.TurnState.Goal.Type, rng)
 
-	events := make([]Event, 0, 2)
-	events = append(events, Event{
-		Type: EvRolled,
-		Data: map[string]any{
-			"success":  res.Success,
-			"goal":     res.Goal,
-			"attempts": res.Attempts,
-			"faces":    res.Faces,
+	s.TurnState.Roll = &RollState{
+		Attempts: res.Attempts,
+		Faces:    res.Faces,
+		Success:  res.Success,
+	}
+
+	events := []Event{
+		{
+			Type: EvRolled,
+			Data: map[string]any{
+				"success":  res.Success,
+				"goal":     res.Goal,
+				"attempts": res.Attempts,
+				"faces":    res.Faces,
+			},
 		},
-	})
+	}
 
 	if !res.Success {
-		s.FoxTrack += 3
-		if s.FoxEscapeAt > 0 && s.FoxTrack >= s.FoxEscapeAt {
-			s.Status = StatusFinished
-			s.Result = ResultLose
-			events = append(events, Event{
-				Type: EvGameFinished,
-				Data: map[string]any{"result": s.Result},
-			})
-			s.Version++
-			return s, events, nil
-		}
-		s.Pending = PendingNone
+		s.TurnState.Pending = PendingNone
+		s.TurnState.Move = nil
+
+		s.Fox.Track += 3
+
 		events = append(events, Event{
 			Type: EvFoxMoved,
-			Data: map[string]any{"by": 3, "foxTrack": s.FoxTrack},
+			Data: map[string]any{
+				"by":    3,
+				"track": s.Fox.Track,
+			},
 		})
-		s.Phase = PhaseEndTurn
-	} else {
-		if s.Goal.Type == GoalClue {
-			s.Pending = PendingClue
-		} else {
-			s.Pending = PendingSuspect
+
+		if s.Fox.EscapeAt > 0 && s.Fox.Track >= s.Fox.EscapeAt {
+			s.Status = StatusFinished
+			s.Result = ResultLose
+			s.Phase = PhaseEndTurn
+			s.Version++
+
+			events = append(events, Event{
+				Type: EvGameFinished,
+				Data: map[string]any{
+					"result": s.Result,
+				},
+			})
+			return s, events, nil
 		}
-		s.Phase = PhaseAction
+
+		s.Phase = PhaseEndTurn
+		s.Version++
+		return s, events, nil
+	}
+
+	switch s.TurnState.Goal.Type {
+	case GoalClue:
+		steps := countMoveSteps(res.Faces)
+		if steps <= 0 {
+			return s, nil, ErrInvalidMove
+		}
+
+		s.TurnState.Pending = PendingMoveToClue
+		s.TurnState.Move = &MoveState{
+			StepsTotal:     steps,
+			StepsRemaining: steps,
+		}
+		s.Phase = PhaseMovePawn
+
+	case GoalSuspect:
+		s.TurnState.Pending = PendingRevealSuspects
+		s.TurnState.Move = nil
+		s.Phase = PhaseRevealSuspects
+
+	default:
+		return s, nil, ErrInvalidPhase
 	}
 
 	s.Version++
 	return s, events, nil
 }
 
-func applyEndTurn(s GameState, c EndTurnCommand) (GameState, []Event, error) {
-	if s.Phase != PhaseEndTurn && s.Phase != PhaseAction {
-		// разрешим завершать ход из Action тоже (пока MVP)
+func applyMovePawn(s GameState, c MovePawnCommand) (GameState, []Event, error) {
+	if s.Phase != PhaseMovePawn {
 		return s, nil, ErrInvalidPhase
 	}
+	if s.TurnState.Pending != PendingMoveToClue {
+		return s, nil, ErrNoPendingAction
+	}
+	if s.TurnState.Move == nil {
+		return s, nil, ErrInvalidMove
+	}
 
-	// очистим цель, подготовим следующего игрока
-	s.Goal.Set = false
-	s.Goal.Type = ""
+	player, ok := s.ActivePlayer()
+	if !ok {
+		return s, nil, ErrInvalidMove
+	}
 
-	s.ActiveSeat = nextSeat(s)
-	s.Turn++
-	s.Phase = PhaseChooseGoal
+	move := s.TurnState.Move
+	if c.Steps <= 0 || c.Steps > move.StepsRemaining {
+		return s, nil, ErrInvalidMove
+	}
+
+	newCell := s.Board.ClampIndex(player.PawnCell + c.Steps)
+
+	for i := range s.Players {
+		if s.Players[i].Seat == s.ActiveSeat {
+			s.Players[i].PawnCell = newCell
+			break
+		}
+	}
+
+	move.StepsRemaining -= c.Steps
+
+	cell, ok := s.Board.CellAt(newCell)
+	if !ok {
+		return s, nil, ErrInvalidMove
+	}
+
+	events := []Event{
+		{
+			Type: EvPawnMoved,
+			Data: map[string]any{
+				"seat":      s.ActiveSeat,
+				"toCell":    newCell,
+				"stepsLeft": move.StepsRemaining,
+			},
+		},
+	}
+
+	// Дошли до клетки с подсказкой — можно брать улику сразу.
+	if cell.Type == BoardCellClue && cell.ClueTokenID != "" {
+		s.TurnState.Pending = PendingResolveClue
+		s.Phase = PhaseResolveClue
+		s.Version++
+		return s, events, nil
+	}
+
+	// Шаги закончились, но до улики не дошли — ход заканчивается.
+	if move.StepsRemaining == 0 {
+		s.TurnState.Pending = PendingNone
+		s.TurnState.Move = nil
+		s.Phase = PhaseEndTurn
+		s.Version++
+		return s, events, nil
+	}
+
 	s.Version++
-
-	ev := Event{Type: EvTurnEnded, Data: map[string]any{"activeSeat": s.ActiveSeat, "turn": s.Turn}}
-	return s, []Event{ev}, nil
+	return s, events, nil
 }
 
 func applyTakeClue(s GameState, c TakeClueCommand) (GameState, []Event, error) {
-	if s.Phase != PhaseAction {
+	if s.Phase != PhaseResolveClue {
+		return s, nil, ErrInvalidPhase
+	}
+	if s.TurnState.Pending != PendingResolveClue {
+		return s, nil, ErrNoPendingAction
+	}
+
+	player, ok := s.ActivePlayer()
+	if !ok {
 		return s, nil, ErrInvalidPhase
 	}
 
-	if s.Pending == PendingNone {
+	cell, ok := s.Board.CellAt(player.PawnCell)
+	if !ok {
+		return s, nil, ErrInvalidMove
+	}
+	if cell.Type != BoardCellClue || cell.ClueTokenID == "" {
 		return s, nil, ErrNoPendingAction
 	}
-	if s.Pending != PendingClue {
-		return s, nil, ErrPendingNotClue
+
+	clue, ok := findClueByID(s.Clues, cell.ClueTokenID)
+	if !ok {
+		return s, nil, ErrNoPendingAction
 	}
-	if s.CluesTotal > 0 && s.CluesFound >= s.CluesTotal {
+	if clue.Revealed {
 		return s, nil, ErrAllCluesCollected
 	}
 
-	s.CluesFound++
-	s.Pending = PendingNone
+	result, ok := s.Secret.ClueTruth[clue.ID]
+	if !ok {
+		return s, nil, ErrInvalidPhase
+	}
+
+	clue.Revealed = true
+	clue.Result = ptrTraitValue(result)
+
+	s.TurnState.Pending = PendingNone
+	s.TurnState.Move = nil
 	s.Phase = PhaseEndTurn
 	s.Version++
 
 	ev := Event{
 		Type: EvClueTaken,
 		Data: map[string]any{
-			"cluesFound": s.CluesFound,
-			"cluesTotal": s.CluesTotal,
+			"clueId":    clue.ID,
+			"trait":     clue.Trait,
+			"result":    result,
+			"boardCell": clue.BoardCell,
 		},
 	}
+
 	return s, []Event{ev}, nil
 }
 
 func applyRevealSuspects(s GameState, c RevealSuspectsCommand) (GameState, []Event, error) {
-	if s.Phase != PhaseAction {
+	if s.Phase != PhaseRevealSuspects {
 		return s, nil, ErrInvalidPhase
 	}
-	if s.Pending == PendingNone {
+	if s.TurnState.Pending != PendingRevealSuspects {
 		return s, nil, ErrNoPendingAction
 	}
-	if s.Pending != PendingSuspect {
-		return s, nil, ErrPendingNotSuspect
+
+	if len(c.SuspectIDs) != 2 {
+		return s, nil, ErrInvalidRevealSelection
+	}
+	if c.SuspectIDs[0] == c.SuspectIDs[1] {
+		return s, nil, ErrInvalidRevealSelection
 	}
 
-	revealed := make([]int, 0, 2)
+	revealed := make([]string, 0, 2)
 
-	for i := range s.Suspects {
-		if !s.Suspects[i].Revealed {
-			s.Suspects[i].Revealed = true
-			revealed = append(revealed, s.Suspects[i].ID)
-			if len(revealed) == 2 {
-				break
-			}
+	for _, suspectID := range c.SuspectIDs {
+		suspect, ok := findSuspectByID(s.Suspects, suspectID)
+		if !ok {
+			return s, nil, ErrSuspectNotFound
 		}
+		if suspect.Revealed {
+			return s, nil, ErrSuspectAlreadyRevealed
+		}
+
+		suspect.Revealed = true
+		revealed = append(revealed, suspect.ID)
 	}
 
-	if len(revealed) == 0 {
-		return s, nil, ErrNoSuspectsToReveal
-	}
+	applyAutoExclusion(&s)
 
-	s.Pending = PendingNone
+	s.TurnState.Pending = PendingNone
+	s.TurnState.Move = nil
 	s.Phase = PhaseEndTurn
 	s.Version++
 
 	ev := Event{
-		Type: "suspects_revealed",
+		Type: EvSuspectsRevealed,
 		Data: map[string]any{
 			"ids": revealed,
 		},
@@ -197,22 +330,28 @@ func applyRevealSuspects(s GameState, c RevealSuspectsCommand) (GameState, []Eve
 }
 
 func applyAccuse(s GameState, c AccuseCommand) (GameState, []Event, error) {
-	// В текущем MVP обвинение допускается в любой активной фазе хода.
-
-	// Базовая защита: обвинять можно только раскрытого и не исключённого
-	if c.SuspectID < 0 || c.SuspectID >= len(s.Suspects) {
-		return s, nil, ErrInvalidPhase
+	suspect, ok := findSuspectByID(s.Suspects, c.SuspectID)
+	if !ok {
+		return s, nil, ErrSuspectNotFound
 	}
-	sp := s.Suspects[c.SuspectID]
-	if !sp.Revealed {
+	if !suspect.Revealed {
 		return s, nil, ErrSuspectNotRevealed
 	}
-	if sp.Excluded {
+	if suspect.Excluded {
 		return s, nil, ErrSuspectExcluded
 	}
 
-	correct := (c.SuspectID == s.CulpritID)
+	correct := c.SuspectID == s.Secret.CulpritSuspectID
 
+	s.Status = StatusFinished
+	if correct {
+		s.Result = ResultWin
+	} else {
+		s.Result = ResultLose
+	}
+
+	s.TurnState.ResetForNextTurn()
+	s.Phase = PhaseEndTurn
 	s.Version++
 
 	evs := []Event{
@@ -223,26 +362,37 @@ func applyAccuse(s GameState, c AccuseCommand) (GameState, []Event, error) {
 				"correct":   correct,
 			},
 		},
-	}
-
-	// Завершение игры
-	s.Status = StatusFinished
-	if correct {
-		s.Result = ResultWin
-	} else {
-		s.Result = ResultLose
-	}
-	s.Phase = ""
-	s.Pending = PendingNone
-
-	evs = append(evs, Event{
-		Type: EvGameFinished,
-		Data: map[string]any{
-			"result": s.Result,
+		{
+			Type: EvGameFinished,
+			Data: map[string]any{
+				"result": s.Result,
+			},
 		},
-	})
+	}
 
 	return s, evs, nil
+}
+
+func applyEndTurn(s GameState, c EndTurnCommand) (GameState, []Event, error) {
+	if s.Phase != PhaseEndTurn {
+		return s, nil, ErrInvalidPhase
+	}
+
+	s.TurnState.ResetForNextTurn()
+	s.ActiveSeat = nextSeat(s)
+	s.Turn++
+	s.Phase = PhaseChooseGoal
+	s.Version++
+
+	ev := Event{
+		Type: EvTurnEnded,
+		Data: map[string]any{
+			"activeSeat": s.ActiveSeat,
+			"turn":       s.Turn,
+		},
+	}
+
+	return s, []Event{ev}, nil
 }
 
 func nextSeat(s GameState) int {
@@ -251,4 +401,42 @@ func nextSeat(s GameState) int {
 		return 0
 	}
 	return (s.ActiveSeat + 1) % n
+}
+
+func countMoveSteps(faces []string) int {
+	steps := 0
+	for _, face := range faces {
+		if face == "footprint" || face == "move" || face == "step" {
+			steps++
+		}
+	}
+	return steps
+}
+
+func findClueByID(clues []ClueToken, id string) (*ClueToken, bool) {
+	for i := range clues {
+		if clues[i].ID == id {
+			return &clues[i], true
+		}
+	}
+	return nil, false
+}
+
+func findSuspectByID(suspects []SuspectCard, id string) (*SuspectCard, bool) {
+	for i := range suspects {
+		if suspects[i].ID == id {
+			return &suspects[i], true
+		}
+	}
+	return nil, false
+}
+
+func ptrTraitValue(v TraitValue) *TraitValue {
+	return &v
+}
+
+// applyAutoExclusion - пока заглушка
+// Позже тут будет настоящая дедукция по уликам.
+func applyAutoExclusion(s *GameState) {
+	_ = s
 }

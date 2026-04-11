@@ -8,74 +8,82 @@ import (
 	"fox/internal/modules/game/domain"
 )
 
-// WSRequest — сообщение от клиента по WebSocket.
-type WSRequest struct {
-	ID      string          `json:"id"`
-	Type    string          `json:"type"`    // "command"
-	Command string          `json:"command"` // choose_goal, roll_auto, take_clue, reveal_suspects, end_turn, accuse
-	Payload json.RawMessage `json:"payload"`
-}
-
-// WSError — стандартная ошибка для клиента
-type WSError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-type WSResponse struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"` // "update" | "error"
-	Payload any    `json:"payload"`
-}
-
-type UpdatePayload struct {
-	State  domain.GameState `json:"state"`
-	Events []domain.Event   `json:"events"`
-}
-
-// DecodeCommand превращает WSRequest в `domain.Command`.
+// DecodeCommand превращает WSRequest в domain.Command.
+// actorID берём с сервера из токена
 func DecodeCommand(req WSRequest, actorID domain.PlayerID) (domain.Command, error) {
 	if req.Type != "command" {
 		return nil, fmt.Errorf("invalid message type: %s", req.Type)
 	}
 
 	switch req.Command {
-	case "choose_goal":
+	case string(domain.CmdChooseGoal):
 		var p struct {
 			Goal string `json:"goal"`
 		}
 		if err := json.Unmarshal(req.Payload, &p); err != nil {
 			return nil, fmt.Errorf("invalid payload: %w", err)
 		}
+
 		goal, err := parseGoalType(p.Goal)
 		if err != nil {
 			return nil, err
 		}
+
 		return domain.ChooseGoalCommand{
 			Player: actorID,
 			Goal:   goal,
 		}, nil
 
-	case "roll_auto":
+	case string(domain.CmdRollAuto):
 		// payload может быть пустым
-		return domain.RollAutoCommand{Player: actorID}, nil
+		return domain.RollAutoCommand{
+			Player: actorID,
+		}, nil
 
-	case "take_clue":
-		return domain.TakeClueCommand{Player: actorID}, nil
-
-	case "reveal_suspects":
-		return domain.RevealSuspectsCommand{Player: actorID}, nil
-
-	case "end_turn":
-		return domain.EndTurnCommand{Player: actorID}, nil
-
-	case "accuse":
+	case string(domain.CmdMovePawn):
 		var p struct {
-			SuspectID int `json:"suspectId"`
+			Steps int `json:"steps"`
 		}
 		if err := json.Unmarshal(req.Payload, &p); err != nil {
 			return nil, fmt.Errorf("invalid payload: %w", err)
 		}
+
+		return domain.MovePawnCommand{
+			Player: actorID,
+			Steps:  p.Steps,
+		}, nil
+
+	case string(domain.CmdTakeClue):
+		return domain.TakeClueCommand{
+			Player: actorID,
+		}, nil
+
+	case string(domain.CmdRevealSuspects):
+		var p struct {
+			SuspectIDs []string `json:"suspectIds"`
+		}
+		if err := json.Unmarshal(req.Payload, &p); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+
+		return domain.RevealSuspectsCommand{
+			Player:     actorID,
+			SuspectIDs: p.SuspectIDs,
+		}, nil
+
+	case string(domain.CmdEndTurn):
+		return domain.EndTurnCommand{
+			Player: actorID,
+		}, nil
+
+	case string(domain.CmdAccuse):
+		var p struct {
+			SuspectID string `json:"suspectId"`
+		}
+		if err := json.Unmarshal(req.Payload, &p); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+
 		return domain.AccuseCommand{
 			Player:    actorID,
 			SuspectID: p.SuspectID,
