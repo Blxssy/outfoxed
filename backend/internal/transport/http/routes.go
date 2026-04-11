@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	transportdocs "fox/internal/transport/http/docs"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -36,6 +38,9 @@ func NewRouter(d Deps) http.Handler {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	r.Get("/openapi.yaml", transportdocs.OpenAPIHandler().ServeHTTP)
+	r.Get("/swagger", transportdocs.SwaggerUIHandler().ServeHTTP)
+	r.Get("/swagger/", transportdocs.SwaggerUIHandler().ServeHTTP)
 
 	//WebSocket routes
 	r.Route("/ws", func(r chi.Router) {
