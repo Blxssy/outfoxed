@@ -16,6 +16,8 @@ export class RegisterComponent {
     private readonly authService = inject(AuthService);
     private readonly router = inject(Router);
 
+    errorMessage = '';
+
     readonly registerForm = this.fb.group({
         username: ['', [Validators.required]],
         email: ['', [Validators.required, Validators.email]],
@@ -23,6 +25,12 @@ export class RegisterComponent {
         confirmPassword: ['', [Validators.required]],
     });
     // to do: валидаторы на сильный пароль
+
+    ngOnInit() {
+        this.registerForm.valueChanges.subscribe(() => {
+            this.errorMessage = '';
+        });
+    }
 
     onSubmit() {
         if (this.registerForm.invalid) {
@@ -53,8 +61,29 @@ export class RegisterComponent {
                     this.router.navigate(['/lobby']);
                 },
                 error: (err) => {
-                    console.error('register error:', err);
+                    this.errorMessage = this.getRegisterErrorMessage(err);
+                    console.error(this.errorMessage);
                 },
             });
+    }
+
+    private getRegisterErrorMessage(err: any): string {
+        if (err.status === 400) {
+            return 'Некорректные данные';
+        }
+
+        if (err.status === 409) {
+            return 'E-mail уже используется';
+        }
+
+        if (err.status === 500) {
+            return 'Ошибка сервера';
+        }
+
+        if (err.status === 0) {
+            return 'Сервер недоступен';
+        }
+
+        return err.error || 'Что-то пошло не так';
     }
 }

@@ -19,11 +19,19 @@ export class LoginComponent {
     private readonly router = inject(Router);
     private readonly tokenService = inject(TokenService);
 
+    errorMessage = '';
+
     readonly loginForm = this.fb.group({
         email: ['', [Validators.required]],
         password: ['', [Validators.required]],
     });
     // to do: валидаторы на сильный пароль
+
+    ngOnInit() {
+        this.loginForm.valueChanges.subscribe(() => {
+            this.errorMessage = '';
+        });
+    }
 
     onSubmit() {
         if (this.loginForm.invalid) {
@@ -46,8 +54,29 @@ export class LoginComponent {
                     this.router.navigate(['/lobby']);
                 },
                 error: (err) => {
-                    console.log('login error:', err);
+                    this.errorMessage = this.getLoginErrorMessage(err);
+                    console.error(this.errorMessage);
                 },
             });
+    }
+
+    private getLoginErrorMessage(err: any): string {
+        if (err.status === 400) {
+            return 'Некорректные данные';
+        }
+
+        if (err.status === 401) {
+            return 'Неверный e-mail или пароль';
+        }
+
+        if (err.status === 500) {
+            return 'Ошибка сервера';
+        }
+
+        if (err.status === 0) {
+            return 'Сервер недоступен';
+        }
+
+        return err.error || 'Что-то пошло не так';
     }
 }
