@@ -1,1 +1,26 @@
-<p>auth works!</p>
+<header class="auth-header">
+    <div class="auth-logo">
+        <img src="outfoxed_logo.png" alt="" class="auth-logo__img" />
+    </div>
+</header>
+
+<div class="auth-main">
+    <nav class="auth-switcher" aria-label="Навигация">
+        <a
+            routerLink="/auth/login"
+            routerLinkActive="auth-switcher__btn--active"
+            class="auth-switcher__btn"
+            [routerLinkActiveOptions]="{ exact: true }"
+        >
+            Вход
+        </a>
+        <a
+            routerLink="/auth/register"
+            routerLinkActive="auth-switcher__btn--active"
+            class="auth-switcher__btn"
+        >
+            Регистрация
+        </a>
+    </nav>
+    <router-outlet />
+</div>

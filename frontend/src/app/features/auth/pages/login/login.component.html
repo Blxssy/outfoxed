@@ -1,0 +1,44 @@
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-form-wrap">
+            <form
+                [formGroup]="loginForm"
+                (ngSubmit)="onSubmit()"
+                class="login-form"
+                novalidate
+            >
+                <fox-input
+                    type="text"
+                    placeholder="example@mail.ru"
+                    label="E-mail:"
+                    formControlName="email"
+                />
+                <fox-input
+                    type="password"
+                    placeholder="Пароль"
+                    label="Пароль:"
+                    formControlName="password"
+                />
+
+                <div class="forgot-wrap">
+                    <a class="forgot-link">Забыли пароль?</a>
+                </div>
+
+                <fox-button
+                    [text]="'Войти'"
+                    [fullWidth]="true"
+                    type="submit"
+                ></fox-button>
+                <div class="no-account">
+                    Нет аккаунта?
+                    <a routerLink="/auth/register" class="to-register">
+                        Зарегистрироваться</a
+                    >
+                </div>
+            </form>
+            @if (errorMessage) {
+                <div class="error-message">{{ errorMessage }}</div>
+            }
+        </div>
+    </div>
+</div>
