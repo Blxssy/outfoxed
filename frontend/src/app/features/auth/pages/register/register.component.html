@@ -1,0 +1,51 @@
+<div class="register-page">
+    <div class="register-card">
+        <div class="register-form-wrap">
+            <form
+                [formGroup]="registerForm"
+                (ngSubmit)="onSubmit()"
+                class="register-form"
+                novalidate
+            >
+                <fox-input
+                    type="text"
+                    placeholder="your_name"
+                    label="Имя пользователя:"
+                    formControlName="username"
+                />
+                <fox-input
+                    type="email"
+                    placeholder="example@yandex.ru"
+                    label="E-mail:"
+                    formControlName="email"
+                />
+                <fox-input
+                    type="password"
+                    placeholder="Пароль"
+                    label="Пароль:"
+                    formControlName="password"
+                />
+                <fox-input
+                    type="password"
+                    placeholder="Пароль"
+                    label="Повторите пароль:"
+                    formControlName="confirmPassword"
+                />
+
+                <fox-button
+                    class="register-btn"
+                    [fullWidth]="true"
+                    [text]="'Зарегистрироваться'"
+                    type="submit"
+                ></fox-button>
+                <div class="account-exists">
+                    Уже есть аккаунт?
+                    <a routerLink="/auth/login" class="to-login">Войти</a>
+                </div>
+            </form>
+            @if (errorMessage) {
+                <div class="error-message">{{ errorMessage }}</div>
+            }
+        </div>
+    </div>
+</div>

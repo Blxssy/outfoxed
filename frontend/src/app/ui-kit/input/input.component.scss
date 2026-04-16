@@ -1,0 +1,108 @@
+:host {
+    display: block;
+}
+
+.inp {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.inp__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-weight: 500;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+    user-select: none;
+}
+
+.inp__field-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.inp__affix {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    pointer-events: none;
+
+    &--left {
+        left: 12px;
+    }
+    &--right {
+        right: 10px;
+    }
+}
+
+.inp__native {
+    width: 100%;
+    font-weight: 400;
+    color: #0a0a0f;
+    background: linear-gradient(180deg, #f8f3ea 0%, #eee7d8 100%);
+    border: 2px solid #c0a870;
+    border-radius: 10px;
+    outline: none;
+    transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease,
+        background 120ms ease;
+
+    &::placeholder {
+        color: #9ca3af;
+        font-weight: 400;
+    }
+
+    &:focus {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(229, 179, 70, 0.282);
+    }
+
+    &.inp__native--suffix {
+        padding-right: 34px;
+    }
+}
+
+.inp--md {
+    .inp__native {
+        height: 40px;
+        padding: 0 14px;
+        font-size: 14px;
+    }
+    .inp__affix img {
+        width: 16px;
+        height: 16px;
+    }
+    --inp-suffix-offset: 40px;
+}
+
+.inp__eye-toggle {
+    pointer-events: all;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px;
+    border-radius: 4px;
+    color: #907050;
+    line-height: 0;
+    transition:
+        color 120ms ease,
+        background 120ms ease;
+
+    &:hover {
+        color: #4a2e10;
+        background: rgba(0, 0, 0, 0.08);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #f59e0b;
+        outline-offset: 2px;
+    }
+}

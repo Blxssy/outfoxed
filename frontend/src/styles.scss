@@ -1,1 +1,60 @@
-/* You can add global styles to this file, and also import other style files */
+* {
+    font-family: "Shantell Sans", sans-serif;
+}
+
+:root {
+    --color-primary: #ff6b00;
+    --color-secondary: #386a2e;
+    --color-danger: #e63946;
+    --color-disabled: #bdbdbd;
+}
+
+// default settings
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+li,
+figure,
+figcaption,
+blockquote,
+dl,
+dd {
+    margin: 0;
+}
+
+body {
+    min-height: 100vh;
+    line-height: 1.5;
+    text-rendering: optimizeSpeed;
+}
+
+ul,
+ol {
+    list-style: none;
+    padding: 0;
+}
+
+input,
+button,
+textarea,
+select {
+    font: inherit;
+}
+
+textarea {
+    resize: vertical;
+}
