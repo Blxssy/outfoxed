@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 // Deps — зависимости роутера.
@@ -32,6 +33,33 @@ func NewRouter(d Deps) http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Logger)
+
+	// CORS
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{
+			"http://localhost:4200", // Angular dev server
+			"http://127.0.0.1:4200",
+		},
+		AllowedMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodOptions,
+		},
+		AllowedHeaders: []string{
+			"Accept",
+			"Authorization",
+			"Content-Type",
+			"X-Requested-With",
+		},
+		ExposedHeaders: []string{
+			"Link",
+		},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	// Healthcheck
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {

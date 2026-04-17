@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/go-chi/cors v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.3 // indirect
