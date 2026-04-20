@@ -6,10 +6,17 @@ import { ButtonComponent } from '@fox/ui-kit/button';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from 'src/app/services/auth/auth.service';
 import { TokenService } from 'src/app/services/auth/token.service';
+import { CardComponent } from '@fox/ui-kit/card';
 
 @Component({
     selector: 'app-login',
-    imports: [ReactiveFormsModule, ButtonComponent, InputComponent, RouterLink],
+    imports: [
+        ReactiveFormsModule,
+        ButtonComponent,
+        InputComponent,
+        RouterLink,
+        CardComponent,
+    ],
     templateUrl: './login.component.html',
     styleUrl: './login.component.scss',
 })

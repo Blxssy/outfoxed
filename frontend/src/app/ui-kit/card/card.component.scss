@@ -1,0 +1,68 @@
+:host {
+    display: block;
+}
+
+.card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(175deg, #235a30 0%, #1a4a25 50%, #163d20 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.22),
+            transparent
+        );
+        pointer-events: none;
+    }
+}
+
+.card--default {
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.45),
+        0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.card--flat {
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.25),
+        0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.card--inset {
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 24px 64px rgba(0, 0, 0, 0.55),
+        0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.card--sm {
+    padding: 16px 20px;
+}
+.card--md {
+    padding: 28px 28px 24px;
+}
+.card--lg {
+    padding: 32px 28px 28px;
+}
+
+@keyframes card-in {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

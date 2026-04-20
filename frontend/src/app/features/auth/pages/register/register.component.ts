@@ -4,10 +4,17 @@ import { ButtonComponent } from '@fox/ui-kit/button';
 import { InputComponent } from '@fox/ui-kit/input';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from 'src/app/services/auth/auth.service';
+import { CardComponent } from '@fox/ui-kit/card';
 
 @Component({
     selector: 'app-register',
-    imports: [ReactiveFormsModule, ButtonComponent, InputComponent, RouterLink],
+    imports: [
+        ReactiveFormsModule,
+        ButtonComponent,
+        InputComponent,
+        RouterLink,
+        CardComponent,
+    ],
     templateUrl: './register.component.html',
     styleUrl: './register.component.scss',
 })
