@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { InputComponent } from '@fox/ui-kit/input';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from 'src/app/services/auth/auth.service';
 
 @Component({
@@ -14,31 +14,76 @@ import { AuthService } from 'src/app/services/auth/auth.service';
 export class RegisterComponent {
     private readonly fb = inject(FormBuilder);
     private readonly authService = inject(AuthService);
+    private readonly router = inject(Router);
+
+    errorMessage = '';
 
     readonly registerForm = this.fb.group({
-        nickName: ['', [Validators.required]],
+        username: ['', [Validators.required]],
         email: ['', [Validators.required, Validators.email]],
         password: ['', [Validators.required]],
         confirmPassword: ['', [Validators.required]],
     });
     // to do: валидаторы на сильный пароль
 
+    ngOnInit() {
+        this.registerForm.valueChanges.subscribe(() => {
+            this.errorMessage = '';
+        });
+    }
+
     onSubmit() {
         if (this.registerForm.invalid) {
             this.registerForm.markAllAsTouched();
             // to do: настроить ошибки формы
+            console.log('submit fired');
             return;
         }
 
-        const { nickName, email, password, confirmPassword } =
+        const { username, email, password, confirmPassword } =
             this.registerForm.getRawValue();
 
-        this.authService.register({
-            nickName: nickName!,
-            email: email!,
-            password: password!,
-            confirmPassword: confirmPassword!,
-        });
-        // fix !
+        if (password !== confirmPassword) {
+            this.registerForm.get('confirmPassword')?.setErrors({
+                mismatch: true,
+            });
+            return;
+        }
+
+        this.authService
+            .register({
+                username: username!,
+                email: email!,
+                password: password!,
+            })
+            .subscribe({
+                next: () => {
+                    this.router.navigate(['/lobby']);
+                },
+                error: (err) => {
+                    this.errorMessage = this.getRegisterErrorMessage(err);
+                    console.error(this.errorMessage);
+                },
+            });
+    }
+
+    private getRegisterErrorMessage(err: any): string {
+        if (err.status === 400) {
+            return 'Некорректные данные';
+        }
+
+        if (err.status === 409) {
+            return 'E-mail уже используется';
+        }
+
+        if (err.status === 500) {
+            return 'Ошибка сервера';
+        }
+
+        if (err.status === 0) {
+            return 'Сервер недоступен';
+        }
+
+        return err.error || 'Что-то пошло не так';
     }
 }

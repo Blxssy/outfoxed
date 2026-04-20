@@ -27,5 +27,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# IDEs and editors
-.idea/
+*.idea/
+*.env
+*.gocache

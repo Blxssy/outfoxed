@@ -1,0 +1,898 @@
+openapi: 3.0.3
+info:
+  title: Outfoxe Backend API
+  version: 1.0.0
+  description: |
+    HTTP and WebSocket contract for the Outfoxe backend.
+
+    Authentication for protected HTTP endpoints uses `Authorization: Bearer <access_token>`.
+
+    WebSocket connection:
+    - URL: `ws://localhost:8080/ws/games/{id}?token=<access_token>`
+    - header alternative: `Authorization: Bearer <access_token>`
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Health
+  - name: Auth
+  - name: Games
+  - name: WebSocket
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+
+  /api/v1/auth/guest:
+    post:
+      tags: [Auth]
+      summary: Create guest user
+      responses:
+        '200':
+          description: Guest session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already in use
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: email already used
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: invalid credentials
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Refresh token invalid or expired
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: invalid refresh token
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/games:
+    post:
+      tags: [Games]
+      summary: Create game
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '201':
+          description: Game created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGameResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: User is already in another unfinished game
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: user is already in another game
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/games/{id}:
+    get:
+      tags: [Games]
+      summary: Get lobby snapshot
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameID'
+      responses:
+        '200':
+          description: Lobby snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LobbySnapshot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/GameNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/games/{id}/join:
+    post:
+      tags: [Games]
+      summary: Join game
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameID'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinGameRequest'
+      responses:
+        '200':
+          description: Joined existing game or returned current membership
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinGameResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/GameNotFound'
+        '409':
+          description: Game full, already started, not enough state, or user already in another unfinished game
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: user is already in another game
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/games/{id}/start:
+    post:
+      tags: [Games]
+      summary: Start game
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameID'
+      responses:
+        '200':
+          description: Game started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Only creator can start or user has no access
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: only the game creator can start the game
+        '404':
+          $ref: '#/components/responses/GameNotFound'
+        '409':
+          description: Invalid game state
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: game already started
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/games/{id}/state:
+    get:
+      tags: [Games]
+      summary: Get game state snapshot
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameID'
+      responses:
+        '200':
+          description: Full public game view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/GameNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ws/games/{id}:
+    get:
+      tags: [WebSocket]
+      summary: Game WebSocket handshake
+      description: |
+        Upgrades the HTTP request to a WebSocket connection.
+
+        Authentication:
+        - query param `token`, or
+        - header `Authorization: Bearer <access_token>`
+
+        After successful connect, server sends an initial `update` message with full state.
+
+        Client message format:
+        ```json
+        {
+          "id": "req-1",
+          "type": "command",
+          "command": "choose_goal",
+          "payload": { "goal": "clue" }
+        }
+        ```
+
+        Server update message:
+        ```json
+        {
+          "id": "req-1",
+          "type": "update",
+          "payload": {
+            "state": { },
+            "events": [ ]
+          }
+        }
+        ```
+
+        Server error message:
+        ```json
+        {
+          "id": "req-1",
+          "type": "error",
+          "payload": {
+            "code": "not_your_turn",
+            "message": "It is not your turn."
+          }
+        }
+        ```
+      parameters:
+        - $ref: '#/components/parameters/GameID'
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Access token for WebSocket authorization.
+      responses:
+        '101':
+          description: Switching Protocols
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Access denied after upgrade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WSResponseError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    GameID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: invalid request body
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: missing authorization header
+    Forbidden:
+      description: User does not have access to this game
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: forbidden
+    GameNotFound:
+      description: Game not found
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: game not found
+    InternalError:
+      description: Internal server error
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: internal server error
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    CreateGameRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          example: online
+
+    JoinGameRequest:
+      type: object
+      properties:
+        invite_code:
+          type: string
+          nullable: true
+
+    User:
+      type: object
+      required: [id, username, is_guest, role, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        is_guest:
+          type: boolean
+        role:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AuthResult:
+      type: object
+      required: [user, access_token, refresh_token]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    RefreshResult:
+      type: object
+      required: [access_token, refresh_token]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    GameSummary:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [waiting, active, finished]
+
+    PlayerSummary:
+      type: object
+      required: [user_id, seat]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        seat:
+          type: integer
+
+    CreateGameResult:
+      type: object
+      required: [game, player]
+      properties:
+        game:
+          $ref: '#/components/schemas/GameSummary'
+        player:
+          $ref: '#/components/schemas/PlayerSummary'
+
+    JoinGameResult:
+      type: object
+      required: [game, player]
+      properties:
+        game:
+          $ref: '#/components/schemas/GameSummary'
+        player:
+          $ref: '#/components/schemas/PlayerSummary'
+
+    LobbyPlayer:
+      type: object
+      required: [user_id, seat, display_name, is_me]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        seat:
+          type: integer
+        display_name:
+          type: string
+        is_me:
+          type: boolean
+
+    LobbyGame:
+      type: object
+      required: [id, status, players, can_start, min_players, max_players]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [waiting, active, finished]
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/LobbyPlayer'
+        can_start:
+          type: boolean
+        min_players:
+          type: integer
+          example: 2
+        max_players:
+          type: integer
+          example: 4
+
+    LobbySnapshot:
+      type: object
+      required: [game]
+      properties:
+        game:
+          $ref: '#/components/schemas/LobbyGame'
+
+    StartRedirect:
+      type: object
+      required: [route]
+      properties:
+        route:
+          type: string
+          example: /game/11111111-1111-1111-1111-111111111111
+
+    StartResult:
+      type: object
+      required: [game, redirect]
+      properties:
+        game:
+          $ref: '#/components/schemas/GameSummary'
+        redirect:
+          $ref: '#/components/schemas/StartRedirect'
+
+    StateResult:
+      type: object
+      required: [state]
+      properties:
+        state:
+          $ref: '#/components/schemas/GameView'
+
+    GameView:
+      type: object
+      required:
+        - id
+        - status
+        - phase
+        - version
+        - turn
+        - activeSeat
+        - me
+        - players
+        - board
+        - fox
+        - suspects
+        - clues
+        - turnState
+        - availableActions
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [waiting, active, finished]
+        phase:
+          type: string
+          enum: [choose_goal, rolling, move_pawn, resolve_clue, reveal_suspects, accusation, end_turn]
+        result:
+          type: string
+          enum: [none, win, lose]
+        version:
+          type: integer
+        turn:
+          type: integer
+        activeSeat:
+          type: integer
+        me:
+          $ref: '#/components/schemas/PlayerView'
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerView'
+        board:
+          $ref: '#/components/schemas/BoardView'
+        fox:
+          $ref: '#/components/schemas/FoxView'
+        suspects:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuspectCardView'
+        clues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClueTokenView'
+        turnState:
+          $ref: '#/components/schemas/TurnView'
+        availableActions:
+          type: array
+          items:
+            type: string
+            enum: [choose_goal, roll_auto, move_pawn, take_clue, reveal_suspects, accuse, end_turn]
+
+    PlayerView:
+      type: object
+      required: [userId, seat, name, pawnCell, connected]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        seat:
+          type: integer
+        name:
+          type: string
+        pawnCell:
+          type: integer
+        connected:
+          type: boolean
+
+    BoardView:
+      type: object
+      required: [cells]
+      properties:
+        cells:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardCellView'
+
+    BoardCellView:
+      type: object
+      required: [index, type, hasClue]
+      properties:
+        index:
+          type: integer
+        type:
+          type: string
+          enum: [start, path, clue]
+        hasClue:
+          type: boolean
+        clueTokenId:
+          type: string
+          nullable: true
+
+    FoxView:
+      type: object
+      required: [track, escapeAt]
+      properties:
+        track:
+          type: integer
+        escapeAt:
+          type: integer
+
+    TurnView:
+      type: object
+      required: [goal, pending]
+      properties:
+        goal:
+          $ref: '#/components/schemas/TurnGoal'
+        pending:
+          type: string
+          enum: ['', move_to_clue, resolve_clue, reveal_suspects]
+        roll:
+          $ref: '#/components/schemas/RollState'
+        move:
+          $ref: '#/components/schemas/MoveState'
+
+    TurnGoal:
+      type: object
+      required: [set, type]
+      properties:
+        set:
+          type: boolean
+        type:
+          type: string
+          enum: [clue, suspect]
+
+    RollState:
+      type: object
+      required: [attempts, faces, success]
+      properties:
+        attempts:
+          type: integer
+        faces:
+          type: array
+          items:
+            type: string
+        success:
+          type: boolean
+      nullable: true
+
+    MoveState:
+      type: object
+      required: [stepsTotal, stepsRemaining]
+      properties:
+        stepsTotal:
+          type: integer
+        stepsRemaining:
+          type: integer
+      nullable: true
+
+    SuspectCardView:
+      type: object
+      required: [id, revealed, excluded]
+      properties:
+        id:
+          type: string
+        revealed:
+          type: boolean
+        excluded:
+          type: boolean
+        traits:
+          $ref: '#/components/schemas/SuspectTraits'
+
+    SuspectTraits:
+      type: object
+      properties:
+        glasses:
+          $ref: '#/components/schemas/TraitValue'
+        hat:
+          $ref: '#/components/schemas/TraitValue'
+        scarf:
+          $ref: '#/components/schemas/TraitValue'
+        umbrella:
+          $ref: '#/components/schemas/TraitValue'
+        color:
+          $ref: '#/components/schemas/TraitValue'
+
+    ClueTokenView:
+      type: object
+      required: [id, revealed, boardCell]
+      properties:
+        id:
+          type: string
+        revealed:
+          type: boolean
+        trait:
+          type: string
+          enum: [glasses, hat, scarf, umbrella, color]
+          nullable: true
+        result:
+          $ref: '#/components/schemas/TraitValue'
+        boardCell:
+          type: integer
+
+    TraitValue:
+      type: string
+      enum: [unknown, yes, no, red, blue, green, yellow, purple]
+      nullable: true
+
+    Event:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [goal_chosen, rolled, fox_moved, turn_ended, clue_taken, accused, game_finished, pawn_moved, suspect_revealed]
+        data:
+          type: object
+          additionalProperties: true
+
+    WSRequest:
+      type: object
+      required: [id, type, command, payload]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [command]
+        command:
+          type: string
+          enum: [choose_goal, roll_auto, move_pawn, take_clue, reveal_suspects, end_turn, accuse]
+        payload:
+          type: object
+          additionalProperties: true
+
+    UpdatePayload:
+      type: object
+      required: [state, events]
+      properties:
+        state:
+          $ref: '#/components/schemas/GameView'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+
+    WSError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    WSResponseUpdate:
+      type: object
+      required: [type, payload]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [update]
+        payload:
+          $ref: '#/components/schemas/UpdatePayload'
+
+    WSResponseError:
+      type: object
+      required: [type, payload]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [error]
+        payload:
+          $ref: '#/components/schemas/WSError'

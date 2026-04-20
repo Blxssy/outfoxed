@@ -9,9 +9,9 @@
             >
                 <fox-input
                     type="text"
-                    placeholder="your_name"
-                    label="Имя пользователя:"
-                    formControlName="nickName"
+                    placeholder="example@mail.ru"
+                    label="E-mail:"
+                    formControlName="email"
                 />
                 <fox-input
                     type="password"
@@ -36,6 +36,9 @@
                     >
                 </div>
             </form>
+            @if (errorMessage) {
+                <div class="error-message">{{ errorMessage }}</div>
+            }
         </div>
     </div>
 </div>

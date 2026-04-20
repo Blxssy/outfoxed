@@ -11,7 +11,7 @@
                     type="text"
                     placeholder="your_name"
                     label="Имя пользователя:"
-                    formControlName="nickName"
+                    formControlName="username"
                 />
                 <fox-input
                     type="email"
@@ -43,6 +43,9 @@
                     <a routerLink="/auth/login" class="to-login">Войти</a>
                 </div>
             </form>
+            @if (errorMessage) {
+                <div class="error-message">{{ errorMessage }}</div>
+            }
         </div>
     </div>
 </div>
