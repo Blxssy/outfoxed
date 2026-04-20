@@ -2,6 +2,8 @@ import { Component, input } from '@angular/core';
 import { NgClass } from '@angular/common';
 
 type ButtonType = 'button' | 'submit' | 'reset';
+type ButtonColor = 'orange' | 'green';
+type ButtonSize = 'sm' | 'md' | 'lg';
 
 @Component({
     selector: 'fox-button',
@@ -12,8 +14,8 @@ type ButtonType = 'button' | 'submit' | 'reset';
 export class ButtonComponent {
     readonly text = input.required<string>();
     readonly isDisabled = input<boolean>(false);
-    readonly size = input<string>('md');
-    readonly color = input<string>('orange');
+    readonly size = input<ButtonSize>('md');
+    readonly color = input<ButtonColor>('orange');
     readonly fullWidth = input<boolean>(false);
     readonly type = input<ButtonType>('button');
 

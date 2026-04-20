@@ -5,14 +5,102 @@
         </div>
     </header>
 
-    <section class="lobby-actions">
-        <fox-button [text]="'Создать игру'"> </fox-button>
-        <fox-button [text]="'Войти по коду'"> </fox-button>
-    </section>
+    <main class="lobby-main">
+        <section class="lobby-rooms-header">
+            <h2 class="lobby-rooms-title">Доступные игры</h2>
+            <div class="lobby-actions">
+                <fox-button
+                    [text]="'Создать игру'"
+                    [color]="'green'"
+                    [size]="'lg'"
+                ></fox-button>
+                <fox-button [text]="'Войти по коду'" [size]="'lg'"></fox-button>
+            </div>
+        </section>
 
-    <section class="lobby-rooms">
-        <h2>Список игр</h2>
-    </section>
+        <section class="lobby-rooms" aria-live="polite">
+            @if (isLoading()) {
+                <div class="rooms-skeleton">
+                    @for (i of [1, 2, 3]; track i) {
+                        <div class="room-skeleton-item"></div>
+                    }
+                </div>
+            } @else if (rooms().length === 0) {
+                <div class="rooms-empty">
+                    <p class="rooms-empty__title">Комнат пока нет</p>
+                    <p class="rooms-empty__hint">Создайте первую игру!</p>
+                </div>
+            } @else {
+                <ul class="room-list">
+                    @for (room of rooms(); track room.id) {
+                        <li
+                            class="room-item"
+                            [class.room-item--full]="room.status === 'full'"
+                        >
+                            <fox-card size="sm" variant="flat"
+                                ><div class="room-card">
+                                    <div class="room-item__info">
+                                        <div class="room-item__top">
+                                            <span class="room-item__name">{{
+                                                room.name
+                                            }}</span>
+                                            @if (room.status === "starting") {
+                                                <span
+                                                    class="room-badge room-badge--starting"
+                                                    >Скоро начнётся</span
+                                                >
+                                            }
+                                            @if (room.status === "full") {
+                                                <span
+                                                    class="room-badge room-badge--full"
+                                                    >Заполнена</span
+                                                >
+                                            }
+                                        </div>
 
-    <fox-card size="md" variant="inset"></fox-card>
+                                        <div class="room-item__meta">
+                                            <span class="room-item__host">
+                                                <!-- добавить иконку человечка -->
+                                                {{ room.hostName }}
+                                            </span>
+                                            <span class="room-item__players">
+                                                <!-- добавить иконку людей -->
+                                                {{ room.playersNow }} /
+                                                {{ room.playersMax }}
+                                            </span>
+                                        </div>
+
+                                        <div class="room-item__progress">
+                                            @for (
+                                                slot of [1, 2, 3, 4];
+                                                track slot
+                                            ) {
+                                                <div
+                                                    class="room-item__slot"
+                                                    [class.room-item__slot--filled]="
+                                                        slot <= room.playersNow
+                                                    "
+                                                ></div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <fox-button
+                                        [text]="
+                                            room.status === 'full'
+                                                ? 'Занято'
+                                                : 'Войти'
+                                        "
+                                        [isDisabled]="room.status === 'full'"
+                                        (click)="joinRoom(room)"
+                                    >
+                                    </fox-button>
+                                </div>
+                            </fox-card>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </main>
 </div>
