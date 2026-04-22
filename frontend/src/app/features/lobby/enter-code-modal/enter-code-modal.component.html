@@ -1,1 +1,27 @@
-<p>enter-code-modal works!</p>
+<div class="modal-overlay" (click)="closeJoinModal()">
+    <fox-card class="modal" size="sm" variant="flat">
+        <div (click)="$event.stopPropagation()">
+            <button class="modal__close" (click)="closeJoinModal()">X</button>
+
+            <h2 class="modal__title" id="modal-title">Войти по коду</h2>
+            <p class="modal__subtitle">Введите код приватной комнаты</p>
+
+            <form (ngSubmit)="joinByCode()" class="modal__form">
+                <div class="code-input-wrap">
+                    <fox-input type="text" placeholder="XXXXXX" />
+
+                    @if (codeError()) {
+                        <p class="code-error">{{ codeError() }}</p>
+                    }
+                </div>
+
+                <fox-button
+                    text="Присоединиться"
+                    type="submit"
+                    color="green"
+                    [fullWidth]="true"
+                />
+            </form>
+        </div>
+    </fox-card>
+</div>

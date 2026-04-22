@@ -110,9 +110,10 @@
         </section>
     </main>
     @if (createModalOpen()) {
-        <app-create-game-modal
-            (closeModal)="closeCreateModal()"
-        ></app-create-game-modal>
+        <app-create-game-modal (closeModal)="closeCreateModal()" />
+    }
+    @if (joinModalOpen()) {
+        <app-enter-code-modal (closeModal)="closeJoinModal()" />
     }
 </div>
 

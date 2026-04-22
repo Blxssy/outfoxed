@@ -3,10 +3,16 @@ import { ButtonComponent } from '@fox/ui-kit/button';
 import { CardComponent } from '@fox/ui-kit/card/card.component';
 import { Room } from './lobby.model';
 import { CreateGameModalComponent } from './create-game-modal/create-game-modal.component';
+import { EnterCodeModalComponent } from './enter-code-modal/enter-code-modal.component';
 
 @Component({
     selector: 'app-lobby',
-    imports: [ButtonComponent, CardComponent, CreateGameModalComponent],
+    imports: [
+        ButtonComponent,
+        CardComponent,
+        CreateGameModalComponent,
+        EnterCodeModalComponent,
+    ],
     templateUrl: './lobby.component.html',
     styleUrl: './lobby.component.scss',
 })
