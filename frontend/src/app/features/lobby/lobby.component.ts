@@ -1,11 +1,12 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { CardComponent } from '@fox/ui-kit/card/card.component';
 import { Room } from './lobby.model';
+import { CreateGameModalComponent } from './create-game-modal/create-game-modal.component';
 
 @Component({
     selector: 'app-lobby',
-    imports: [ButtonComponent, CardComponent],
+    imports: [ButtonComponent, CardComponent, CreateGameModalComponent],
     templateUrl: './lobby.component.html',
     styleUrl: './lobby.component.scss',
 })
@@ -18,16 +19,33 @@ export class LobbyComponent {
     joinCode = '';
     newRoomName = '';
 
-    openJoinModal(): void {}
-    closeJoinModal(): void {}
-    openCreateModal(): void {}
-    closeCreateModal(): void {}
+    openCreateModal(): void {
+        this.createModalOpen.set(true);
+        console.log('join opened');
+    }
+
+    closeCreateModal(): void {
+        this.createModalOpen.set(false);
+    }
+
+    openJoinModal(): void {
+        this.joinModalOpen.set(true);
+        console.log('create opened');
+    }
+
+    closeJoinModal(): void {
+        this.joinModalOpen.set(false);
+    }
 
     createRoom(): void {
         this.openCreateModal();
     }
 
-    joinRoom(room: Room): void {}
+    joinRoom(room: Room): void {
+        if (room.status !== 'waiting') {
+            return;
+        }
+    }
 
     joinByCode(): void {}
 }

@@ -1,12 +1,12 @@
-export type RoomStatus = 'waiting' | 'full' | 'starting';
+export type RoomStatus = 'waiting' | 'active' | 'finished';
 
 export type Room = {
     id: string;
-    name: string;
-    playersNow: number;
-    playersMax: number;
+    title: string;
+    host_username: string;
+    players_count: number;
+    max_players: number;
     status: RoomStatus;
-    isPrivate: boolean;
-    hostName: string;
-    createdAt: Date;
+    visibility: boolean;
+    joinCode?: number;
 };

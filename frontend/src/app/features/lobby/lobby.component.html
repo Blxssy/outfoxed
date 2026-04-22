@@ -13,12 +13,17 @@
                     [text]="'Создать игру'"
                     [color]="'green'"
                     [size]="'lg'"
+                    (click)="createRoom()"
                 ></fox-button>
-                <fox-button [text]="'Войти по коду'" [size]="'lg'"></fox-button>
+                <fox-button
+                    [text]="'Войти по коду'"
+                    [size]="'lg'"
+                    (click)="openJoinModal()"
+                ></fox-button>
             </div>
         </section>
 
-        <section class="lobby-rooms" aria-live="polite">
+        <section class="lobby-rooms">
             @if (isLoading()) {
                 <div class="rooms-skeleton">
                     @for (i of [1, 2, 3]; track i) {
@@ -35,22 +40,22 @@
                     @for (room of rooms(); track room.id) {
                         <li
                             class="room-item"
-                            [class.room-item--full]="room.status === 'full'"
+                            [class.room-item--full]="room.status === 'active'"
                         >
                             <fox-card size="sm" variant="flat"
                                 ><div class="room-card">
                                     <div class="room-item__info">
                                         <div class="room-item__top">
                                             <span class="room-item__name">{{
-                                                room.name
+                                                room.title
                                             }}</span>
-                                            @if (room.status === "starting") {
+                                            @if (room.status === "waiting") {
                                                 <span
                                                     class="room-badge room-badge--starting"
                                                     >Скоро начнётся</span
                                                 >
                                             }
-                                            @if (room.status === "full") {
+                                            @if (room.status === "active") {
                                                 <span
                                                     class="room-badge room-badge--full"
                                                     >Заполнена</span
@@ -61,12 +66,12 @@
                                         <div class="room-item__meta">
                                             <span class="room-item__host">
                                                 <!-- добавить иконку человечка -->
-                                                {{ room.hostName }}
+                                                {{ room.host_username }}
                                             </span>
                                             <span class="room-item__players">
                                                 <!-- добавить иконку людей -->
-                                                {{ room.playersNow }} /
-                                                {{ room.playersMax }}
+                                                {{ room.players_count }} /
+                                                {{ room.max_players }}
                                             </span>
                                         </div>
 
@@ -78,7 +83,8 @@
                                                 <div
                                                     class="room-item__slot"
                                                     [class.room-item__slot--filled]="
-                                                        slot <= room.playersNow
+                                                        slot <=
+                                                        room.players_count
                                                     "
                                                 ></div>
                                             }
@@ -87,11 +93,11 @@
 
                                     <fox-button
                                         [text]="
-                                            room.status === 'full'
+                                            room.status === 'active'
                                                 ? 'Занято'
                                                 : 'Войти'
                                         "
-                                        [isDisabled]="room.status === 'full'"
+                                        [isDisabled]="room.status === 'active'"
                                         (click)="joinRoom(room)"
                                     >
                                     </fox-button>
@@ -103,4 +109,11 @@
             }
         </section>
     </main>
+    @if (createModalOpen()) {
+        <app-create-game-modal
+            (closeModal)="closeCreateModal()"
+        ></app-create-game-modal>
+    }
 </div>
+
+<!-- to do: где поставлен статус active - заменить и вычислять заполненность комнаты -->

@@ -1,0 +1,45 @@
+<div class="modal-overlay" (click)="closeCreateModal()">
+    <fox-card class="modal" size="sm" variant="flat">
+        <div (click)="$event.stopPropagation()">
+            <button class="modal__close" (click)="closeCreateModal()">X</button>
+
+            <h2 class="modal__title" id="create-modal-title">Новая игра</h2>
+
+            <form (ngSubmit)="confirmCreateRoom()" class="modal__form">
+                <div class="modal-field">
+                    <label class="modal-label">Название комнаты</label>
+                    <fox-input
+                        name="roomName"
+                        type="text"
+                        placeholder="Моя игра"
+                    ></fox-input>
+                </div>
+
+                <label class="toggle-row">
+                    <span class="toggle-row__label">
+                        <!-- todo: добавить иконку замочка -->
+                        Приватная комната
+                        <small>Только по коду</small>
+                    </span>
+
+                    <button
+                        type="button"
+                        class="toggle"
+                        [class.toggle--on]="newRoomPrivate()"
+                        (click)="togglePrivate()"
+                    >
+                        <span class="toggle__thumb"></span>
+                    </button>
+                </label>
+
+                <fox-button
+                    type="submit"
+                    text="Создать комнату"
+                    color="green"
+                    [fullWidth]="true"
+                >
+                </fox-button>
+            </form>
+        </div>
+    </fox-card>
+</div>
