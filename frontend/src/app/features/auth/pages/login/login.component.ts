@@ -54,8 +54,8 @@ export class LoginComponent {
             .subscribe({
                 next: (res: any) => {
                     this.tokenService.setTokens(
-                        res.accessToken,
-                        res.refreshToken,
+                        res.access_token,
+                        res.refresh_token,
                     );
 
                     this.router.navigate(['/lobby']);

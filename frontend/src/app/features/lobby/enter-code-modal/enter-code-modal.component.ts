@@ -1,7 +1,8 @@
-import { Component, output, signal } from '@angular/core';
+import { Component, inject, output, signal } from '@angular/core';
 import { InputComponent } from '@fox/ui-kit/input';
 import { CardComponent } from '@fox/ui-kit/card';
 import { ButtonComponent } from '@fox/ui-kit/button';
+import { LobbyStore } from '../data/lobby.store';
 
 @Component({
     selector: 'app-enter-code-modal',
@@ -10,18 +11,24 @@ import { ButtonComponent } from '@fox/ui-kit/button';
     styleUrl: './enter-code-modal.component.scss',
 })
 export class EnterCodeModalComponent {
+    private readonly store = inject(LobbyStore);
+
     readonly closeModal = output<void>();
-    readonly codeError = signal('');
     joinCode = '';
 
+    get isLoading(): boolean {
+        return this.store.isJoining();
+    }
+
     closeJoinModal(): void {
+        this.store.clearError();
         this.closeModal.emit();
     }
 
     joinByCode(): void {
-        const code = this.joinCode.trim().toUpperCase();
+        const code = this.joinCode.trim();
 
-        console.log('вход');
-        this.closeJoinModal();
+        if (!code) return;
+        this.store.joinByCode(code);
     }
 }

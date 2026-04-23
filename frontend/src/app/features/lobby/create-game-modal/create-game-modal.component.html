@@ -12,6 +12,7 @@
                         name="roomName"
                         type="text"
                         placeholder="Моя игра"
+                        [(ngModel)]="newRoomName"
                     ></fox-input>
                 </div>
 
@@ -37,6 +38,7 @@
                     text="Создать комнату"
                     color="green"
                     [fullWidth]="true"
+                    [isDisabled]="isLoading"
                 />
             </form>
         </div>

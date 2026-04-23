@@ -1,9 +1,10 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { CardComponent } from '@fox/ui-kit/card/card.component';
-import { Room } from './lobby.model';
+import { RoomListItem } from './data/lobby.model';
 import { CreateGameModalComponent } from './create-game-modal/create-game-modal.component';
 import { EnterCodeModalComponent } from './enter-code-modal/enter-code-modal.component';
+import { LobbyStore } from './data/lobby.store';
 
 @Component({
     selector: 'app-lobby',
@@ -16,14 +17,28 @@ import { EnterCodeModalComponent } from './enter-code-modal/enter-code-modal.com
     templateUrl: './lobby.component.html',
     styleUrl: './lobby.component.scss',
 })
-export class LobbyComponent {
-    protected readonly rooms = signal<Room[]>([]);
-    readonly isLoading = signal(true);
+export class LobbyComponent implements OnInit {
+    protected readonly store = inject(LobbyStore);
+
     readonly joinModalOpen = signal(false);
     readonly createModalOpen = signal(false);
 
     joinCode = '';
     newRoomName = '';
+
+    protected readonly rooms = this.store.rooms;
+    protected readonly isLoading = this.store.isLoadingList;
+
+    constructor() {
+        effect(() => {
+            console.log('rooms updated:', this.rooms());
+        });
+    }
+
+    ngOnInit(): void {
+        this.store.loadRooms();
+        console.log('rooms in lobby', this.rooms());
+    }
 
     openCreateModal(): void {
         this.createModalOpen.set(true);
@@ -47,11 +62,10 @@ export class LobbyComponent {
         this.openCreateModal();
     }
 
-    joinRoom(room: Room): void {
+    joinRoom(room: RoomListItem): void {
         if (room.status !== 'waiting') {
             return;
         }
+        this.store.joinRoom(room.id);
     }
-
-    joinByCode(): void {}
 }

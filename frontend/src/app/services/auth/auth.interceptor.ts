@@ -7,7 +7,7 @@ import {
     HttpErrorResponse,
 } from '@angular/common/http';
 
-import { Observable, catchError, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, throwError } from 'rxjs';
 
 import { TokenService } from './token.service';
 import { AuthService } from './auth.service';
@@ -38,17 +38,7 @@ export class AuthInterceptor implements HttpInterceptor {
         return next.handle(authReq).pipe(
             catchError((error: HttpErrorResponse) => {
                 if (error.status === 401) {
-                    return this.authService.refresh().pipe(
-                        switchMap((tokens) => {
-                            const retryReq = req.clone({
-                                setHeaders: {
-                                    Authorization: `Bearer ${tokens.access_token}`,
-                                },
-                            });
-
-                            return next.handle(retryReq);
-                        }),
-                    );
+                    this.authService.logout();
                 }
 
                 return throwError(() => error);
