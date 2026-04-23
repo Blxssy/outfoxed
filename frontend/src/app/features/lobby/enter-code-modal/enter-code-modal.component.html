@@ -8,7 +8,12 @@
 
             <form (ngSubmit)="joinByCode()" class="modal__form">
                 <div class="code-input-wrap">
-                    <fox-input type="text" placeholder="XXXXXX" />
+                    <fox-input
+                        type="text"
+                        placeholder="XXXXXX"
+                        name="joinCode"
+                        [(ngModel)]="joinCode"
+                    />
 
                     <!-- @if (codeError()) {
                         <p class="code-error">{{ codeError() }}</p>

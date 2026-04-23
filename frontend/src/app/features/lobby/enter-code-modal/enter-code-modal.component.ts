@@ -3,10 +3,11 @@ import { InputComponent } from '@fox/ui-kit/input';
 import { CardComponent } from '@fox/ui-kit/card';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { LobbyStore } from '../data/lobby.store';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-enter-code-modal',
-    imports: [InputComponent, CardComponent, ButtonComponent],
+    imports: [InputComponent, CardComponent, ButtonComponent, FormsModule],
     templateUrl: './enter-code-modal.component.html',
     styleUrl: './enter-code-modal.component.scss',
 })
@@ -27,7 +28,6 @@ export class EnterCodeModalComponent {
 
     joinByCode(): void {
         const code = this.joinCode.trim();
-
         if (!code) return;
         this.store.joinByCode(code);
     }
