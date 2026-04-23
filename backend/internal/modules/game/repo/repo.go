@@ -13,12 +13,24 @@ type GameRow struct {
 	FoxEscapeAt int
 	CulpritID   int
 	CreatedBy   sql.NullString
+
+	Title      string
+	Visibility string
+	JoinCode   sql.NullString
 }
 
 type GamePlayerRow struct {
 	UserID   string
 	Username string
 	Seat     int
+}
+
+type PublicGameRow struct {
+	ID           string
+	Title        string
+	HostUsername sql.NullString
+	Status       string
+	PlayersCount int
 }
 
 type Tx interface {
@@ -29,7 +41,16 @@ type Tx interface {
 type GameRepo interface {
 	BeginTx(ctx context.Context) (*sql.Tx, error)
 
-	CreateGame(ctx context.Context, tx *sql.Tx, createdBy string, stateJSON []byte) (GameRow, error)
+	CreateGame(
+		ctx context.Context,
+		tx *sql.Tx,
+		createdBy string,
+		title string,
+		visibility string,
+		joinCode *string,
+		stateJSON []byte,
+	) (GameRow, error)
+
 	AddPlayer(ctx context.Context, tx *sql.Tx, gameID string, userID string, seat int) error
 	GetPlayers(ctx context.Context, gameID string) ([]GamePlayerRow, error)
 	GetPlayersForUpdate(ctx context.Context, tx *sql.Tx, gameID string) ([]GamePlayerRow, error)
@@ -49,4 +70,10 @@ type GameRepo interface {
 
 	// Сохраняем новый state и версию
 	UpdateState(ctx context.Context, tx *sql.Tx, gameID string, status string, newStateJSON []byte, newVersion int) error
+
+	ListPublicWaitingGames(ctx context.Context) ([]PublicGameRow, error)
+	FindGameByJoinCodeForUpdate(ctx context.Context, tx *sql.Tx, code string) (GameRow, error)
+	RemovePlayer(ctx context.Context, tx *sql.Tx, gameID string, userID string) error
+	SetGameCreator(ctx context.Context, tx *sql.Tx, gameID string, userID string) error
+	DeleteGame(ctx context.Context, tx *sql.Tx, gameID string) error
 }

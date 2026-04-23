@@ -2,13 +2,36 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
+	"strings"
 
 	"fox/internal/modules/game/domain"
 	"fox/internal/modules/game/repo"
 )
+
+var (
+	ErrInvalidVisibility      = errors.New("invalid visibility")
+	ErrInvalidJoinCode        = errors.New("invalid join code")
+	ErrCannotLeaveStartedGame = errors.New("cannot leave started game")
+)
+
+type PublicGameItem struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	HostUsername string `json:"host_username,omitempty"`
+	PlayersCount int    `json:"players_count"`
+	MaxPlayers   int    `json:"max_players"`
+	Status       string `json:"status"`
+}
+
+type GamesListResult struct {
+	Games []PublicGameItem `json:"games"`
+}
 
 type GameSummary struct {
 	ID     string `json:"id"`
@@ -23,6 +46,10 @@ type PlayerSummary struct {
 type CreateGameResult struct {
 	Game   GameSummary   `json:"game"`
 	Player PlayerSummary `json:"player"`
+
+	Title      string  `json:"title"`
+	Visibility string  `json:"visibility"`
+	JoinCode   *string `json:"joinCode,omitempty"`
 }
 
 type JoinGameResult struct {
@@ -38,12 +65,22 @@ type LobbyPlayer struct {
 }
 
 type LobbyGame struct {
-	ID         string        `json:"id"`
-	Status     string        `json:"status"`
-	Players    []LobbyPlayer `json:"players"`
-	CanStart   bool          `json:"can_start"`
-	MinPlayers int           `json:"min_players"`
-	MaxPlayers int           `json:"max_players"`
+	ID           string        `json:"id"`
+	Title        string        `json:"title"`
+	Status       string        `json:"status"`
+	Visibility   string        `json:"visibility"`
+	JoinCode     *string       `json:"joinCode,omitempty"`
+	HostUsername string        `json:"host_username"`
+	Players      []LobbyPlayer `json:"players"`
+	CanStart     bool          `json:"can_start"`
+	MinPlayers   int           `json:"min_players"`
+	MaxPlayers   int           `json:"max_players"`
+}
+
+type LeaveGameResult struct {
+	GameDeleted     bool    `json:"game_deleted"`
+	NewHostUserID   *string `json:"new_host_user_id,omitempty"`
+	NewHostUsername *string `json:"new_host_username,omitempty"`
 }
 
 type LobbySnapshot struct {
@@ -61,7 +98,13 @@ type StateResult struct {
 	State domain.GameView `json:"state"`
 }
 
-func (s *Service) CreateGame(ctx context.Context, userID string) (CreateGameResult, error) {
+type CreateGameOpts struct {
+	UserID     string
+	Title      string
+	Visibility string
+}
+
+func (s *Service) CreateGame(ctx context.Context, opts CreateGameOpts) (CreateGameResult, error) {
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return CreateGameResult{}, fmt.Errorf("begin tx: %w", err)
@@ -70,18 +113,33 @@ func (s *Service) CreateGame(ctx context.Context, userID string) (CreateGameResu
 		_ = tx.Rollback()
 	}()
 
-	if _, err := s.repo.FindUnfinishedGameForUser(ctx, tx, userID); err == nil {
+	visibility, err := normalizeVisibility(opts.Visibility)
+	if err != nil {
+		return CreateGameResult{}, err
+	}
+
+	title := strings.TrimSpace(opts.Title)
+	if title == "" {
+		title = "Комната"
+	}
+
+	if _, err := s.repo.FindUnfinishedGameForUser(ctx, tx, opts.UserID); err == nil {
 		return CreateGameResult{}, ErrAlreadyInAnotherGame
 	} else if err != sql.ErrNoRows {
 		return CreateGameResult{}, fmt.Errorf("check user unfinished game: %w", err)
 	}
 
-	row, err := s.repo.CreateGame(ctx, tx, userID, []byte(`{}`))
+	var row repo.GameRow
+	if visibility == "private" {
+		row, err = s.createPrivateGame(ctx, tx, opts.UserID, title)
+	} else {
+		row, err = s.repo.CreateGame(ctx, tx, opts.UserID, title, visibility, nil, []byte(`{}`))
+	}
 	if err != nil {
 		return CreateGameResult{}, fmt.Errorf("create game: %w", err)
 	}
 
-	if err := s.repo.AddPlayer(ctx, tx, row.ID, userID, 0); err != nil {
+	if err := s.repo.AddPlayer(ctx, tx, row.ID, opts.UserID, 0); err != nil {
 		return CreateGameResult{}, fmt.Errorf("add creator to game: %w", err)
 	}
 
@@ -103,16 +161,83 @@ func (s *Service) CreateGame(ctx context.Context, userID string) (CreateGameResu
 		return CreateGameResult{}, fmt.Errorf("commit: %w", err)
 	}
 
+	var joinCode *string
+	if row.JoinCode.Valid {
+		code := row.JoinCode.String
+		joinCode = &code
+	}
+
 	return CreateGameResult{
 		Game: GameSummary{
 			ID:     row.ID,
 			Status: string(waitingState.Status),
 		},
 		Player: PlayerSummary{
-			UserID: userID,
+			UserID: opts.UserID,
 			Seat:   0,
 		},
+		Title:      row.Title,
+		Visibility: row.Visibility,
+		JoinCode:   joinCode,
 	}, nil
+}
+
+func (s *Service) ListPublicGames(ctx context.Context, userID string) (GamesListResult, error) {
+	rows, err := s.repo.ListPublicWaitingGames(ctx)
+	if err != nil {
+		return GamesListResult{}, fmt.Errorf("list public games: %w", err)
+	}
+
+	items := make([]PublicGameItem, 0, len(rows))
+	for _, row := range rows {
+		item := PublicGameItem{
+			ID:           row.ID,
+			Title:        row.Title,
+			PlayersCount: row.PlayersCount,
+			MaxPlayers:   domain.MaxPlayers,
+			Status:       row.Status,
+		}
+		if row.HostUsername.Valid {
+			item.HostUsername = row.HostUsername.String
+		}
+		items = append(items, item)
+	}
+
+	return GamesListResult{Games: items}, nil
+}
+
+func (s *Service) JoinByCode(ctx context.Context, code string, userID string) (JoinGameResult, error) {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return JoinGameResult{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	code = strings.TrimSpace(code)
+	if len(code) != 6 {
+		return JoinGameResult{}, ErrInvalidJoinCode
+	}
+
+	row, err := s.repo.FindGameByJoinCodeForUpdate(ctx, tx, code)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return JoinGameResult{}, ErrGameNotFound
+		}
+		return JoinGameResult{}, fmt.Errorf("find game by code: %w", err)
+	}
+
+	result, err := s.joinGameTx(ctx, tx, row.ID, userID)
+	if err != nil {
+		return JoinGameResult{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return JoinGameResult{}, fmt.Errorf("commit: %w", err)
+	}
+
+	return result, nil
 }
 
 func (s *Service) JoinGame(ctx context.Context, gameID string, userID string) (JoinGameResult, error) {
@@ -124,84 +249,16 @@ func (s *Service) JoinGame(ctx context.Context, gameID string, userID string) (J
 		_ = tx.Rollback()
 	}()
 
-	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return JoinGameResult{}, ErrGameNotFound
-		}
-		return JoinGameResult{}, fmt.Errorf("get game for update: %w", err)
-	}
-
-	players, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
-	if err != nil {
-		return JoinGameResult{}, fmt.Errorf("get game players: %w", err)
-	}
-
-	for _, player := range players {
-		if player.UserID == userID {
-			if err := tx.Commit(); err != nil {
-				return JoinGameResult{}, fmt.Errorf("commit: %w", err)
-			}
-			return JoinGameResult{
-				Game: GameSummary{
-					ID:     row.ID,
-					Status: row.Status,
-				},
-				Player: PlayerSummary{
-					UserID: userID,
-					Seat:   player.Seat,
-				},
-			}, nil
-		}
-	}
-
-	existingGame, err := s.repo.FindUnfinishedGameForUser(ctx, tx, userID)
-	if err == nil && existingGame.ID != gameID {
-		return JoinGameResult{}, ErrAlreadyInAnotherGame
-	} else if err != nil && err != sql.ErrNoRows {
-		return JoinGameResult{}, fmt.Errorf("check user unfinished game: %w", err)
-	}
-
-	if row.Status != string(domain.StatusWaiting) {
-		return JoinGameResult{}, ErrGameAlreadyStarted
-	}
-	if len(players) >= domain.MaxPlayers {
-		return JoinGameResult{}, ErrGameFull
-	}
-
-	seat := nextFreeSeat(players)
-	if err := s.repo.AddPlayer(ctx, tx, gameID, userID, seat); err != nil {
-		return JoinGameResult{}, fmt.Errorf("add player to game: %w", err)
-	}
-
-	updatedPlayers, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
-	if err != nil {
-		return JoinGameResult{}, fmt.Errorf("get updated players: %w", err)
-	}
-
-	stateJSON, waitingState, err := buildWaitingStateJSON(gameID, updatedPlayers)
+	result, err := s.joinGameTx(ctx, tx, gameID, userID)
 	if err != nil {
 		return JoinGameResult{}, err
-	}
-
-	if err := s.repo.UpdateState(ctx, tx, gameID, string(waitingState.Status), stateJSON, waitingState.Version); err != nil {
-		return JoinGameResult{}, fmt.Errorf("update waiting state: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return JoinGameResult{}, fmt.Errorf("commit: %w", err)
 	}
 
-	return JoinGameResult{
-		Game: GameSummary{
-			ID:     gameID,
-			Status: string(waitingState.Status),
-		},
-		Player: PlayerSummary{
-			UserID: userID,
-			Seat:   seat,
-		},
-	}, nil
+	return result, nil
 }
 
 func (s *Service) GetLobby(ctx context.Context, gameID string, userID string) (LobbySnapshot, error) {
@@ -223,6 +280,8 @@ func (s *Service) GetLobby(ctx context.Context, gameID string, userID string) (L
 	}
 
 	lobbyPlayers := make([]LobbyPlayer, 0, len(players))
+	hostUsername := ""
+
 	for _, player := range players {
 		lobbyPlayers = append(lobbyPlayers, LobbyPlayer{
 			UserID:      player.UserID,
@@ -230,6 +289,10 @@ func (s *Service) GetLobby(ctx context.Context, gameID string, userID string) (L
 			DisplayName: player.Username,
 			IsMe:        player.UserID == userID,
 		})
+
+		if row.CreatedBy.Valid && row.CreatedBy.String == player.UserID {
+			hostUsername = player.Username
+		}
 	}
 
 	canStart := row.Status == string(domain.StatusWaiting) &&
@@ -237,16 +300,124 @@ func (s *Service) GetLobby(ctx context.Context, gameID string, userID string) (L
 		row.CreatedBy.Valid &&
 		row.CreatedBy.String == userID
 
+	game := LobbyGame{
+		ID:           row.ID,
+		Title:        row.Title,
+		Status:       row.Status,
+		Visibility:   row.Visibility,
+		HostUsername: hostUsername,
+		Players:      lobbyPlayers,
+		CanStart:     canStart,
+		MinPlayers:   domain.MinPlayers,
+		MaxPlayers:   domain.MaxPlayers,
+	}
+
+	if row.JoinCode.Valid && row.Visibility == "private" {
+		code := row.JoinCode.String
+		game.JoinCode = &code
+	}
+
 	return LobbySnapshot{
-		Game: LobbyGame{
-			ID:         row.ID,
-			Status:     row.Status,
-			Players:    lobbyPlayers,
-			CanStart:   canStart,
-			MinPlayers: domain.MinPlayers,
-			MaxPlayers: domain.MaxPlayers,
-		},
+		Game: game,
 	}, nil
+}
+
+func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (LeaveGameResult, error) {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return LeaveGameResult{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return LeaveGameResult{}, ErrGameNotFound
+		}
+		return LeaveGameResult{}, fmt.Errorf("get game for update: %w", err)
+	}
+
+	// Пока разрешаем выход только из lobby / waiting
+	if row.Status != string(domain.StatusWaiting) {
+		return LeaveGameResult{}, ErrCannotLeaveStartedGame
+	}
+
+	players, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
+	if err != nil {
+		return LeaveGameResult{}, fmt.Errorf("get players for update: %w", err)
+	}
+
+	if !hasPlayer(players, userID) {
+		return LeaveGameResult{}, ErrForbidden
+	}
+
+	isHost := row.CreatedBy.Valid && row.CreatedBy.String == userID
+
+	if err := s.repo.RemovePlayer(ctx, tx, gameID, userID); err != nil {
+		if err == sql.ErrNoRows {
+			return LeaveGameResult{}, ErrForbidden
+		}
+		return LeaveGameResult{}, fmt.Errorf("remove player: %w", err)
+	}
+
+	updatedPlayers, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
+	if err != nil {
+		return LeaveGameResult{}, fmt.Errorf("get updated players: %w", err)
+	}
+
+	// Если комната опустела — удаляем её
+	if len(updatedPlayers) == 0 {
+		if err := s.repo.DeleteGame(ctx, tx, gameID); err != nil {
+			return LeaveGameResult{}, fmt.Errorf("delete empty game: %w", err)
+		}
+
+		if err := tx.Commit(); err != nil {
+			return LeaveGameResult{}, fmt.Errorf("commit: %w", err)
+		}
+
+		return LeaveGameResult{
+			GameDeleted: true,
+		}, nil
+	}
+
+	result := LeaveGameResult{
+		GameDeleted: false,
+	}
+
+	// Если вышел хост — передаём лидерство игроку с минимальным seat
+	if isHost {
+		newHost := updatedPlayers[0]
+		for _, p := range updatedPlayers {
+			if p.Seat < newHost.Seat {
+				newHost = p
+			}
+		}
+
+		if err := s.repo.SetGameCreator(ctx, tx, gameID, newHost.UserID); err != nil {
+			return LeaveGameResult{}, fmt.Errorf("set new host: %w", err)
+		}
+
+		result.NewHostUserID = &newHost.UserID
+		result.NewHostUsername = &newHost.Username
+	}
+
+	// Пересобираем waiting state
+	stateJSON, waitingState, err := buildWaitingStateJSON(gameID, updatedPlayers)
+	if err != nil {
+		return LeaveGameResult{}, err
+	}
+
+	if err := s.repo.UpdateState(ctx, tx, gameID, string(waitingState.Status), stateJSON, waitingState.Version); err != nil {
+		return LeaveGameResult{}, fmt.Errorf("update waiting state: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return LeaveGameResult{}, fmt.Errorf("commit: %w", err)
+	}
+
+	return result, nil
 }
 
 func (s *Service) StartGame(ctx context.Context, gameID string, userID string) (StartResult, error) {
@@ -357,4 +528,135 @@ func hasPlayer(players []repo.GamePlayerRow, userID string) bool {
 		}
 	}
 	return false
+}
+
+func normalizeVisibility(v string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "", "public":
+		return "public", nil
+	case "private":
+		return "private", nil
+	default:
+		return "", ErrInvalidVisibility
+	}
+}
+
+func (s *Service) createPrivateGame(ctx context.Context, tx *sql.Tx, userID, title string) (repo.GameRow, error) {
+	const maxAttempts = 5
+
+	for i := 0; i < maxAttempts; i++ {
+		code, err := generateJoinCode()
+		if err != nil {
+			return repo.GameRow{}, err
+		}
+
+		row, err := s.repo.CreateGame(ctx, tx, userID, title, "private", &code, []byte(`{}`))
+		if err == nil {
+			return row, nil
+		}
+
+		if isDuplicateJoinCodeError(err) {
+			continue
+		}
+		return repo.GameRow{}, err
+	}
+
+	return repo.GameRow{}, fmt.Errorf("failed to generate unique join code")
+}
+
+func generateJoinCode() (string, error) {
+	var b strings.Builder
+	b.Grow(6)
+
+	for i := 0; i < 6; i++ {
+		n, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", err
+		}
+		b.WriteByte(byte('0' + n.Int64()))
+	}
+
+	return b.String(), nil
+}
+
+func isDuplicateJoinCodeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate key") && strings.Contains(msg, "join_code")
+}
+
+func (s *Service) joinGameTx(ctx context.Context, tx *sql.Tx, gameID string, userID string) (JoinGameResult, error) {
+	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return JoinGameResult{}, ErrGameNotFound
+		}
+		return JoinGameResult{}, fmt.Errorf("get game for update: %w", err)
+	}
+
+	players, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
+	if err != nil {
+		return JoinGameResult{}, fmt.Errorf("get game players: %w", err)
+	}
+
+	for _, player := range players {
+		if player.UserID == userID {
+			return JoinGameResult{
+				Game: GameSummary{
+					ID:     row.ID,
+					Status: row.Status,
+				},
+				Player: PlayerSummary{
+					UserID: userID,
+					Seat:   player.Seat,
+				},
+			}, nil
+		}
+	}
+
+	existingGame, err := s.repo.FindUnfinishedGameForUser(ctx, tx, userID)
+	if err == nil && existingGame.ID != gameID {
+		return JoinGameResult{}, ErrAlreadyInAnotherGame
+	} else if err != nil && err != sql.ErrNoRows {
+		return JoinGameResult{}, fmt.Errorf("check user unfinished game: %w", err)
+	}
+
+	if row.Status != string(domain.StatusWaiting) {
+		return JoinGameResult{}, ErrGameAlreadyStarted
+	}
+	if len(players) >= domain.MaxPlayers {
+		return JoinGameResult{}, ErrGameFull
+	}
+
+	seat := nextFreeSeat(players)
+	if err := s.repo.AddPlayer(ctx, tx, gameID, userID, seat); err != nil {
+		return JoinGameResult{}, fmt.Errorf("add player to game: %w", err)
+	}
+
+	updatedPlayers, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
+	if err != nil {
+		return JoinGameResult{}, fmt.Errorf("get updated players: %w", err)
+	}
+
+	stateJSON, waitingState, err := buildWaitingStateJSON(gameID, updatedPlayers)
+	if err != nil {
+		return JoinGameResult{}, err
+	}
+
+	if err := s.repo.UpdateState(ctx, tx, gameID, string(waitingState.Status), stateJSON, waitingState.Version); err != nil {
+		return JoinGameResult{}, fmt.Errorf("update waiting state: %w", err)
+	}
+
+	return JoinGameResult{
+		Game: GameSummary{
+			ID:     gameID,
+			Status: string(waitingState.Status),
+		},
+		Player: PlayerSummary{
+			UserID: userID,
+			Seat:   seat,
+		},
+	}, nil
 }
