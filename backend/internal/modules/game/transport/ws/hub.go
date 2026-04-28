@@ -37,3 +37,11 @@ func (h *Hub) RemoveRoomIfEmpty(gameID string) {
 		delete(h.rooms, gameID)
 	}
 }
+
+func (h *Hub) FindRoom(gameID string) (*Room, bool) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	room, ok := h.rooms[gameID]
+	return room, ok
+}

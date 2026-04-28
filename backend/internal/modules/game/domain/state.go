@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type PlayerState struct {
 	UserID    PlayerID `json:"userId"`
 	Seat      int      `json:"seat"`
@@ -25,8 +27,9 @@ type GameState struct {
 	Suspects []SuspectCard `json:"suspects"`
 	Clues    []ClueToken   `json:"clues"`
 
-	TurnState TurnState   `json:"turnState"`
-	Secret    SecretState `json:"secret"`
+	TurnState      TurnState   `json:"turnState"`
+	TurnDeadlineAt *time.Time  `json:"turnDeadlineAt,omitempty"`
+	Secret         SecretState `json:"secret"`
 }
 
 type SecretState struct {

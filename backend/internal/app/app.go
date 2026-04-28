@@ -64,8 +64,12 @@ func Run(cfg *config.Config) {
 		src := rand.NewSource(time.Now().UnixNano())
 		return domain.NewStdRNG(rand.New(src))
 	}
-	gameService := service2.New(gameRepo, rng)
+
 	hub := ws.NewHub()
+	broadcaster := ws.NewBroadcaster(hub)
+
+	gameService := service2.New(log, gameRepo, rng, broadcaster)
+	broadcaster.SetLobbyProvider(gameService)
 
 	gameHandler := gamehttp.NewHandler(gameService, tokenManager)
 	wsHandler := ws.NewHandler(log, hub, gameService, tokenManager)
@@ -90,6 +94,20 @@ func Run(cfg *config.Config) {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				_ = gameService.ProcessTimedOutTurns(ctx)
+			}
+		}
+	}()
 
 	go func() {
 		log.Info().Str("addr", srv.Addr).Msg("http server listening")
