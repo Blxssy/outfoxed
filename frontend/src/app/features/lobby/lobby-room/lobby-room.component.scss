@@ -1,0 +1,170 @@
+.room-layout {
+    min-height: 100vh;
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 860px;
+    width: 100%;
+    margin-inline: auto;
+}
+
+.room-header {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+}
+
+.room-main {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.room-join-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    &__label {
+        color: #fff;
+        font-size: 16px;
+        margin-bottom: 3px;
+    }
+
+    &__value {
+        color: #fff;
+        font-size: 26px;
+        font-weight: 500;
+        letter-spacing: 5px;
+    }
+
+    &__hint {
+        color: #fff;
+        font-size: 14px;
+        margin-top: 2px;
+    }
+}
+
+.room-players {
+    &__title {
+        color: #fff;
+        font-size: 13px;
+        font-weight: 500;
+    }
+}
+
+.player-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+}
+
+.player-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &--empty {
+        opacity: 0.45;
+    }
+
+    &__seat {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #3b6d11;
+        color: #c0dd97;
+        font-size: 11px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    &__name {
+        flex: 1;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 500;
+
+        .player-item--empty & {
+            color: #97c459;
+            font-weight: 400;
+            font-style: italic;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    }
+
+    &__badge {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 20px;
+        margin-left: 6px;
+
+        &--host {
+            background: #e8a838;
+            color: #7a3b0a;
+            font-weight: 500;
+        }
+
+        &--me {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+    }
+}
+
+.room-waiting-hint {
+    flex: 1;
+
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    &::before {
+        content: "⏳";
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+}
+
+.room-error {
+    background: #fcebeb;
+    color: #a32d2d;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+}
+
+.room-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+    color: #888780;
+    font-size: 14px;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}

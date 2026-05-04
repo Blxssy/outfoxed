@@ -1,0 +1,36 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #f5f0e8;
+    -webkit-font-smoothing: antialiased;
+}
+
+.lobby-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.lobby-header {
+    position: relative;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(180deg, #d82020 0%, #b81818 60%, #901010 100%);
+    padding: 6px 20px 6px;
+    overflow: hidden;
+}
+
+.lobby-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+
+    &__img {
+        height: 50px;
+        width: auto;
+    }
+}
