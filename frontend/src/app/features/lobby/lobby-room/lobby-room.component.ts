@@ -2,10 +2,11 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { LobbyStore } from '../data/lobby.store';
+import { CardComponent } from '@fox/ui-kit/card';
 
 @Component({
     selector: 'app-lobby-room',
-    imports: [ButtonComponent],
+    imports: [ButtonComponent, CardComponent],
     templateUrl: './lobby-room.component.html',
     styleUrl: './lobby-room.component.scss',
 })

@@ -5,6 +5,7 @@
             (click)="leaveRoom()"
             [isDisabled]="isLeaving()"
             [text]="'← Выйти'"
+            [color]="'green'"
         >
         </fox-button>
         <h1 class="room-title">{{ room()?.title }}</h1>
@@ -13,70 +14,80 @@
     @if (room()) {
         <main class="room-main">
             @if (joinCode()) {
-                <div class="room-join-code">
-                    <span class="room-join-code__label">Код комнаты:</span>
-                    <span class="room-join-code__value">{{ joinCode() }}</span>
-                    <small class="room-join-code__hint">
-                        Поделитесь им с друзьями
-                    </small>
-                </div>
+                <fox-card [size]="'md'">
+                    <div class="room-join-code">
+                        <span class="room-join-code__label">Код комнаты:</span>
+                        <span class="room-join-code__value">{{
+                            joinCode()
+                        }}</span>
+                        <small class="room-join-code__hint">
+                            Поделитесь им с друзьями
+                        </small>
+                    </div>
+                </fox-card>
             }
             <section class="room-players">
-                <h2 class="room-players__title">
-                    Игроки ({{ room()!.players.length }} /
-                    {{ room()!.max_players }})
-                </h2>
+                <fox-card>
+                    <h2 class="room-players__title">
+                        Игроки ({{ room()!.players.length }} /
+                        {{ room()!.max_players }})
+                    </h2>
 
-                <ul class="player-list">
-                    @for (player of room()!.players; track player.user_id) {
-                        <li
-                            class="player-item"
-                            [class.player-item--me]="player.is_me"
-                            [class.player-item--host]="
-                                player.display_name === room()!.host_username
-                            "
-                        >
-                            <span class="player-item__seat">
-                                {{ player.seat + 1 }}
-                            </span>
-                            <span class="player-item__name">
-                                {{ player.display_name }}
-                            </span>
-
-                            @if (
-                                player.display_name === room()!.host_username
-                            ) {
-                                <span
-                                    class="player-item__badge player-item__badge--host"
-                                >
-                                    Создатель
+                    <ul class="player-list">
+                        @for (player of room()!.players; track player.user_id) {
+                            <li
+                                class="player-item"
+                                [class.player-item--me]="player.is_me"
+                                [class.player-item--host]="
+                                    player.display_name ===
+                                    room()!.host_username
+                                "
+                            >
+                                <span class="player-item__seat">
+                                    {{ player.seat + 1 }}
                                 </span>
-                            }
-                            @if (player.is_me) {
-                                <span
-                                    class="player-item__badge player-item__badge--me"
-                                >
-                                    Вы
+                                <span class="player-item__name">
+                                    {{ player.display_name }}
                                 </span>
-                            }
-                        </li>
-                    }
 
-                    @for (
-                        slot of getEmptySlots(
-                            room()!.players.length,
-                            room()!.max_players
-                        );
-                        track slot
-                    ) {
-                        <li class="player-item player-item--empty">
-                            <span class="player-item__seat">{{
-                                room()!.players.length + slot
-                            }}</span>
-                            <span class="player-item__name">Ожидание...</span>
-                        </li>
-                    }
-                </ul>
+                                @if (
+                                    player.display_name ===
+                                    room()!.host_username
+                                ) {
+                                    <span
+                                        class="player-item__badge player-item__badge--host"
+                                    >
+                                        Создатель
+                                    </span>
+                                }
+                                @if (player.is_me) {
+                                    <span
+                                        class="player-item__badge player-item__badge--me"
+                                    >
+                                        Вы
+                                    </span>
+                                }
+                            </li>
+                        }
+
+                        @for (
+                            slot of getEmptySlots(
+                                room()!.players.length,
+                                room()!.max_players
+                            );
+                            track slot
+                        ) {
+                            <li class="player-item player-item--empty">
+                                <span class="player-item__seat">{{
+                                    room()!.players.length + slot
+                                }}</span>
+                                <span class="player-item__name"
+                                    >Ожидание...</span
+                                >
+                            </li>
+                        }
+                    </ul>
+                </fox-card>
             </section>
 
             @if (error()) {
@@ -93,7 +104,9 @@
                     (click)="startGame()"
                 />
             } @else {
-                <p class="room-waiting-hint">Ожидаем игроков…</p>
+                <fox-card>
+                    <p class="room-waiting-hint">Ожидаем игроков…</p>
+                </fox-card>
             }
         </main>
     } @else {
