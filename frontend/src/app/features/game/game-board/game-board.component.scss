@@ -18,8 +18,8 @@
 
 .board-container {
     position: relative;
-    width: 528px;
-    height: 528px;
+    width: 580px;
+    height: 580px;
     border-radius: 9px;
     overflow: hidden;
     background-image:
@@ -39,7 +39,7 @@
 
 .cell {
     position: relative;
-    border-radius: 6px;
+    border-radius: 10px;
     background: rgba(255, 240, 200, 0.25);
     border: 1px solid rgba(255, 220, 130, 0.4);
     cursor: default;
