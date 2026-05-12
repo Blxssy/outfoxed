@@ -1,6 +1,16 @@
-<app-player-cards></app-player-cards>
-<div class="game-board">
-    <app-game-board></app-game-board>
-    <app-fox-track></app-fox-track>
+<div class="top-bar">
+    <app-player-cards></app-player-cards>
 </div>
-<app-suspects></app-suspects>
+
+<div class="main-row">
+    <div class="left-col">
+        <app-fox-track></app-fox-track>
+        <app-game-board></app-game-board>
+    </div>
+
+    <div class="right-col">
+        <app-dice-roll></app-dice-roll>
+        <app-suspects></app-suspects>
+        <app-investigation-log></app-investigation-log>
+    </div>
+</div>
