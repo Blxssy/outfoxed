@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 const (
 	MinPlayers = 2
 	MaxPlayers = 4
@@ -54,6 +56,9 @@ func NewActiveGameState(gameID string, players []SetupPlayer) GameState {
 		CulpritSuspectID: culprit.ID,
 		ClueTruth:        buildClueTruth(culprit),
 	}
+
+	deadline := time.Now().UTC().Add(time.Minute)
+	state.TurnDeadlineAt = &deadline
 
 	return state
 }

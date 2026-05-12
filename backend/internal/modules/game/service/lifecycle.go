@@ -161,6 +161,10 @@ func (s *Service) CreateGame(ctx context.Context, opts CreateGameOpts) (CreateGa
 		return CreateGameResult{}, fmt.Errorf("commit: %w", err)
 	}
 
+	if s.notifier != nil {
+		s.notifier.PublishLobby(row.ID)
+	}
+
 	var joinCode *string
 	if row.JoinCode.Valid {
 		code := row.JoinCode.String
@@ -228,13 +232,17 @@ func (s *Service) JoinByCode(ctx context.Context, code string, userID string) (J
 		return JoinGameResult{}, fmt.Errorf("find game by code: %w", err)
 	}
 
-	result, err := s.joinGameTx(ctx, tx, row.ID, userID)
+	result, waitingState, err := s.joinGameTx(ctx, tx, row.ID, userID)
 	if err != nil {
 		return JoinGameResult{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return JoinGameResult{}, fmt.Errorf("commit: %w", err)
+	}
+
+	if s.notifier != nil && waitingState.ID != "" {
+		s.notifier.PublishLobby(row.ID)
 	}
 
 	return result, nil
@@ -249,13 +257,17 @@ func (s *Service) JoinGame(ctx context.Context, gameID string, userID string) (J
 		_ = tx.Rollback()
 	}()
 
-	result, err := s.joinGameTx(ctx, tx, gameID, userID)
+	result, waitingState, err := s.joinGameTx(ctx, tx, gameID, userID)
 	if err != nil {
 		return JoinGameResult{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return JoinGameResult{}, fmt.Errorf("commit: %w", err)
+	}
+
+	if s.notifier != nil && waitingState.ID != "" {
+		s.notifier.PublishLobby(gameID)
 	}
 
 	return result, nil
@@ -279,47 +291,7 @@ func (s *Service) GetLobby(ctx context.Context, gameID string, userID string) (L
 		return LobbySnapshot{}, ErrForbidden
 	}
 
-	lobbyPlayers := make([]LobbyPlayer, 0, len(players))
-	hostUsername := ""
-
-	for _, player := range players {
-		lobbyPlayers = append(lobbyPlayers, LobbyPlayer{
-			UserID:      player.UserID,
-			Seat:        player.Seat,
-			DisplayName: player.Username,
-			IsMe:        player.UserID == userID,
-		})
-
-		if row.CreatedBy.Valid && row.CreatedBy.String == player.UserID {
-			hostUsername = player.Username
-		}
-	}
-
-	canStart := row.Status == string(domain.StatusWaiting) &&
-		len(players) >= domain.MinPlayers &&
-		row.CreatedBy.Valid &&
-		row.CreatedBy.String == userID
-
-	game := LobbyGame{
-		ID:           row.ID,
-		Title:        row.Title,
-		Status:       row.Status,
-		Visibility:   row.Visibility,
-		HostUsername: hostUsername,
-		Players:      lobbyPlayers,
-		CanStart:     canStart,
-		MinPlayers:   domain.MinPlayers,
-		MaxPlayers:   domain.MaxPlayers,
-	}
-
-	if row.JoinCode.Valid && row.Visibility == "private" {
-		code := row.JoinCode.String
-		game.JoinCode = &code
-	}
-
-	return LobbySnapshot{
-		Game: game,
-	}, nil
+	return BuildLobbySnapshot(row, players, userID), nil
 }
 
 func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (LeaveGameResult, error) {
@@ -417,6 +389,10 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 		return LeaveGameResult{}, fmt.Errorf("commit: %w", err)
 	}
 
+	if s.notifier != nil {
+		s.notifier.PublishLobby(gameID)
+	}
+
 	return result, nil
 }
 
@@ -466,6 +442,10 @@ func (s *Service) StartGame(ctx context.Context, gameID string, userID string) (
 
 	if err := tx.Commit(); err != nil {
 		return StartResult{}, fmt.Errorf("commit: %w", err)
+	}
+
+	if s.notifier != nil {
+		s.notifier.PublishGame(gameID, activeState, nil)
 	}
 
 	result := StartResult{
@@ -587,22 +567,23 @@ func isDuplicateJoinCodeError(err error) bool {
 	return strings.Contains(msg, "duplicate key") && strings.Contains(msg, "join_code")
 }
 
-func (s *Service) joinGameTx(ctx context.Context, tx *sql.Tx, gameID string, userID string) (JoinGameResult, error) {
+func (s *Service) joinGameTx(ctx context.Context, tx *sql.Tx, gameID string, userID string) (JoinGameResult, domain.GameState, error) {
 	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return JoinGameResult{}, ErrGameNotFound
+			return JoinGameResult{}, domain.GameState{}, ErrGameNotFound
 		}
-		return JoinGameResult{}, fmt.Errorf("get game for update: %w", err)
+		return JoinGameResult{}, domain.GameState{}, fmt.Errorf("get game for update: %w", err)
 	}
 
 	players, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
 	if err != nil {
-		return JoinGameResult{}, fmt.Errorf("get game players: %w", err)
+		return JoinGameResult{}, domain.GameState{}, fmt.Errorf("get game players: %w", err)
 	}
 
 	for _, player := range players {
 		if player.UserID == userID {
+			// Игрок уже в комнате — состояние не менялось, поэтому waitingState возвращаем пустой
 			return JoinGameResult{
 				Game: GameSummary{
 					ID:     row.ID,
@@ -612,41 +593,41 @@ func (s *Service) joinGameTx(ctx context.Context, tx *sql.Tx, gameID string, use
 					UserID: userID,
 					Seat:   player.Seat,
 				},
-			}, nil
+			}, domain.GameState{}, nil
 		}
 	}
 
 	existingGame, err := s.repo.FindUnfinishedGameForUser(ctx, tx, userID)
 	if err == nil && existingGame.ID != gameID {
-		return JoinGameResult{}, ErrAlreadyInAnotherGame
+		return JoinGameResult{}, domain.GameState{}, ErrAlreadyInAnotherGame
 	} else if err != nil && err != sql.ErrNoRows {
-		return JoinGameResult{}, fmt.Errorf("check user unfinished game: %w", err)
+		return JoinGameResult{}, domain.GameState{}, fmt.Errorf("check user unfinished game: %w", err)
 	}
 
 	if row.Status != string(domain.StatusWaiting) {
-		return JoinGameResult{}, ErrGameAlreadyStarted
+		return JoinGameResult{}, domain.GameState{}, ErrGameAlreadyStarted
 	}
 	if len(players) >= domain.MaxPlayers {
-		return JoinGameResult{}, ErrGameFull
+		return JoinGameResult{}, domain.GameState{}, ErrGameFull
 	}
 
 	seat := nextFreeSeat(players)
 	if err := s.repo.AddPlayer(ctx, tx, gameID, userID, seat); err != nil {
-		return JoinGameResult{}, fmt.Errorf("add player to game: %w", err)
+		return JoinGameResult{}, domain.GameState{}, fmt.Errorf("add player to game: %w", err)
 	}
 
 	updatedPlayers, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
 	if err != nil {
-		return JoinGameResult{}, fmt.Errorf("get updated players: %w", err)
+		return JoinGameResult{}, domain.GameState{}, fmt.Errorf("get updated players: %w", err)
 	}
 
 	stateJSON, waitingState, err := buildWaitingStateJSON(gameID, updatedPlayers)
 	if err != nil {
-		return JoinGameResult{}, err
+		return JoinGameResult{}, domain.GameState{}, err
 	}
 
 	if err := s.repo.UpdateState(ctx, tx, gameID, string(waitingState.Status), stateJSON, waitingState.Version); err != nil {
-		return JoinGameResult{}, fmt.Errorf("update waiting state: %w", err)
+		return JoinGameResult{}, domain.GameState{}, fmt.Errorf("update waiting state: %w", err)
 	}
 
 	return JoinGameResult{
@@ -658,5 +639,5 @@ func (s *Service) joinGameTx(ctx context.Context, tx *sql.Tx, gameID string, use
 			UserID: userID,
 			Seat:   seat,
 		},
-	}, nil
+	}, waitingState, nil
 }
