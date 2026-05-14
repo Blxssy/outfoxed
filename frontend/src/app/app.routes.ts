@@ -4,10 +4,9 @@ import { AuthGuard } from './guards/auth.guard';
 export const routes: Routes = [
     {
         path: 'game',
-        loadComponent: () =>
-            import('./features/game/game.component').then(
-                (m) => m.GameComponent,
-            ),
+        canActivate: [AuthGuard],
+        loadChildren: () =>
+            import('./features/game/game.routes').then((m) => m.GAME_ROUTES),
     },
     {
         path: 'lobby',

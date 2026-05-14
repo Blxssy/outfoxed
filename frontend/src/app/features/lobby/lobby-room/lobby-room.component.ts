@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { LobbyStore } from '../data/lobby.store';
 import { CardComponent } from '@fox/ui-kit/card';
+import { LobbyWsService } from '../data/lobby-ws.service';
 
 @Component({
     selector: 'app-lobby-room',
@@ -12,6 +13,7 @@ import { CardComponent } from '@fox/ui-kit/card';
 })
 export class LobbyRoomComponent implements OnInit, OnDestroy {
     protected readonly store = inject(LobbyStore);
+    protected readonly lobbyWs = inject(LobbyWsService);
     private readonly route = inject(ActivatedRoute);
 
     protected readonly room = this.store.currentRoom;
@@ -19,13 +21,15 @@ export class LobbyRoomComponent implements OnInit, OnDestroy {
     protected readonly isLeaving = this.store.isLeaving;
     protected readonly isStarting = this.store.isStarting;
     protected readonly joinCode = this.store.privateJoinCode;
-    protected readonly error = this.store.error;
+    protected readonly httpError = this.store.error;
+    protected readonly wsError = this.store.wsError;
+    protected readonly isReconnecting = this.store.isReconnecting;
+    protected readonly wsStatus = this.store.wsStatus;
 
     ngOnInit(): void {
         const id = this.route.snapshot.paramMap.get('id');
         if (id) {
-            this.store.refreshCurrentRoom();
-            this.store.startRoomPolling(id);
+            this.store.initRoom(id);
         }
     }
 
@@ -35,7 +39,9 @@ export class LobbyRoomComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
-        this.store.stopRoomPolling();
+        if (this.lobbyWs.connectionStatus() !== 'disconnected') {
+            this.lobbyWs.disconnect();
+        }
     }
 
     leaveRoom(): void {
