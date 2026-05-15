@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
 	if s.Status == StatusFinished {
 		return s, nil, ErrGameFinished
@@ -114,6 +116,7 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 		if s.Fox.EscapeAt > 0 && s.Fox.Track >= s.Fox.EscapeAt {
 			s.Status = StatusFinished
 			s.Result = ResultLose
+			s.TurnDeadlineAt = nil
 			s.Phase = PhaseEndTurn
 			s.Version++
 
@@ -350,6 +353,8 @@ func applyAccuse(s GameState, c AccuseCommand) (GameState, []Event, error) {
 		s.Result = ResultLose
 	}
 
+	s.TurnDeadlineAt = nil
+
 	s.TurnState.ResetForNextTurn()
 	s.Phase = PhaseEndTurn
 	s.Version++
@@ -382,13 +387,18 @@ func applyEndTurn(s GameState, c EndTurnCommand) (GameState, []Event, error) {
 	s.ActiveSeat = nextSeat(s)
 	s.Turn++
 	s.Phase = PhaseChooseGoal
+
+	deadline := time.Now().UTC().Add(time.Minute)
+	s.TurnDeadlineAt = &deadline
+
 	s.Version++
 
 	ev := Event{
 		Type: EvTurnEnded,
 		Data: map[string]any{
-			"activeSeat": s.ActiveSeat,
-			"turn":       s.Turn,
+			"activeSeat":     s.ActiveSeat,
+			"turn":           s.Turn,
+			"turnDeadlineAt": deadline,
 		},
 	}
 

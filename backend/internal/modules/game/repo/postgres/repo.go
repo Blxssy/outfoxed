@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"fox/internal/modules/game/repo"
 
@@ -405,6 +406,88 @@ func (r *Repo) DeleteGame(ctx context.Context, tx *sql.Tx, gameID string) error 
 		return fmt.Errorf("delete affected %d rows", aff)
 	}
 	return nil
+}
+
+func (r *Repo) UpdateStateAndDeadline(
+	ctx context.Context,
+	tx *sql.Tx,
+	gameID string,
+	status string,
+	newStateJSON []byte,
+	newVersion int,
+	deadline *time.Time,
+) error {
+	res, err := tx.ExecContext(ctx, `
+		update games
+		set status = $2,
+		    state_json = $3,
+		    version = $4,
+		    turn_deadline_at = $5,
+		    updated_at = now()
+		where id = $1
+	`, gameID, status, newStateJSON, newVersion, deadline)
+	if err != nil {
+		return err
+	}
+
+	aff, _ := res.RowsAffected()
+	if aff != 1 {
+		return fmt.Errorf("update affected %d rows", aff)
+	}
+	return nil
+}
+
+func (r *Repo) ListDueGamesForTimeout(ctx context.Context, limit int) ([]repo.GameRow, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		select
+			id,
+			status,
+			state_json,
+			version,
+			fox_escape_at,
+			culprit_id,
+			created_by,
+			title,
+			visibility,
+			join_code,
+			turn_deadline_at
+		from games
+		where status = 'active'
+		  and turn_deadline_at is not null
+		  and turn_deadline_at <= now()
+		order by turn_deadline_at asc
+		limit $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]repo.GameRow, 0)
+	for rows.Next() {
+		var row repo.GameRow
+		if err := rows.Scan(
+			&row.ID,
+			&row.Status,
+			&row.StateJSON,
+			&row.Version,
+			&row.FoxEscapeAt,
+			&row.CulpritID,
+			&row.CreatedBy,
+			&row.Title,
+			&row.Visibility,
+			&row.JoinCode,
+			&row.TurnDeadlineAt,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func scanPlayers(rows *sql.Rows) ([]repo.GamePlayerRow, error) {

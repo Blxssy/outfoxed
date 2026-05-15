@@ -28,9 +28,7 @@ export type JoinGameResponse = {
     player: { user_id: string; seat: number };
 };
 
-export type JoinByCodeRequest = {
-    code: string;
-};
+export type JoinByCodeRequest = { code: string };
 
 export type LobbyPlayer = {
     user_id: string;
@@ -52,9 +50,7 @@ export type LobbySnapshot = {
     max_players: number;
 };
 
-export type LobbySnapshotResponse = {
-    game: LobbySnapshot;
-};
+export type LobbySnapshotResponse = { game: LobbySnapshot };
 
 export type LeaveGameResponse = {
     game_deleted: boolean;
@@ -65,3 +61,18 @@ export type StartGameResponse = {
     game: { id: string; status: GameStatus };
     redirect: { route: string };
 };
+
+export type LobbyWsUpdate = {
+    type: 'update';
+    payload: {
+        state: LobbySnapshot;
+        events: unknown;
+    };
+};
+
+export type LobbyWsError = {
+    type: 'error';
+    payload: { code: string; message: string };
+};
+
+export type LobbyWsMessage = LobbyWsUpdate | LobbyWsError;

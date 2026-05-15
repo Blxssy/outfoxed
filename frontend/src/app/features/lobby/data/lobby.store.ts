@@ -1,21 +1,25 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
-import { LobbyApiService } from './lobby-api.service';
-import { LobbySnapshot, RoomListItem } from './lobby.model';
+import { inject, Injectable, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { catchError, EMPTY, interval, Subscription, switchMap } from 'rxjs';
 import { Router } from '@angular/router';
-
-const POLL_INTERVAL_MS = 3000;
+import { LobbyApiService } from './lobby-api.service';
+import { LobbyWsService } from './lobby-ws.service';
+import { RoomListItem } from './lobby.model';
 
 @Injectable({ providedIn: 'root' })
 export class LobbyStore {
     private readonly router = inject(Router);
     private readonly api = inject(LobbyApiService);
+    private readonly lobbyWs = inject(LobbyWsService);
 
     readonly rooms = signal<RoomListItem[]>([]);
-    readonly currentRoom = signal<LobbySnapshot | null>(null);
-
     readonly isLoadingList = signal(false);
+
+    readonly currentRoom = this.lobbyWs.lobbySnapshot;
+    readonly canStart = this.lobbyWs.canStart;
+    readonly wsError = this.lobbyWs.wsError;
+    readonly wsStatus = this.lobbyWs.connectionStatus;
+    readonly isReconnecting = this.lobbyWs.isReconnecting;
+
     readonly isCreating = signal(false);
     readonly isJoining = signal(false);
     readonly isLeaving = signal(false);
@@ -23,11 +27,7 @@ export class LobbyStore {
 
     readonly privateJoinCode = signal<string | null>(null);
 
-    readonly error = signal<{} | null>(null);
-
-    readonly canStart = computed(() => this.currentRoom()?.can_start ?? false);
-
-    private pollSub: Subscription | null = null;
+    readonly error = signal<{ kind: string; message: string } | null>(null);
 
     loadRooms(): void {
         this.isLoadingList.set(true);
@@ -35,9 +35,7 @@ export class LobbyStore {
 
         this.api.getPublicGames().subscribe({
             next: (res) => {
-                console.log(res.games);
                 this.rooms.set(res.games);
-                console.log('rooms', this.rooms());
                 this.isLoadingList.set(false);
             },
             error: (err: HttpErrorResponse) => {
@@ -66,7 +64,6 @@ export class LobbyStore {
                     if (res.joinCode) {
                         this.privateJoinCode.set(res.joinCode);
                     }
-                    console.log('game created');
 
                     this.enterRoom(res.game.id);
                 },
@@ -98,6 +95,7 @@ export class LobbyStore {
             },
         });
     }
+
     joinByCode(code: string): void {
         this.isJoining.set(true);
         this.clearError();
@@ -122,10 +120,10 @@ export class LobbyStore {
         this.clearError();
 
         this.api.leaveGame(id).subscribe({
-            next: (res) => {
+            next: () => {
                 this.isLeaving.set(false);
-                this.stopRoomPolling();
-                this.currentRoom.set(null);
+
+                this.lobbyWs.disconnect();
                 this.privateJoinCode.set(null);
 
                 this.router.navigate(['/lobby']);
@@ -150,7 +148,7 @@ export class LobbyStore {
         this.api.startGame(id).subscribe({
             next: (res) => {
                 this.isStarting.set(false);
-                this.stopRoomPolling();
+                this.lobbyWs.disconnect();
                 this.router.navigateByUrl(res.redirect.route);
             },
             error: (err: HttpErrorResponse) => {
@@ -163,42 +161,23 @@ export class LobbyStore {
         });
     }
 
-    startRoomPolling(gameId: string): void {
-        this.stopRoomPolling();
-        this.pollSub = interval(POLL_INTERVAL_MS)
-            .pipe(
-                switchMap(() =>
-                    this.api
-                        .getLobbySnapshot(gameId)
-                        .pipe(catchError(() => EMPTY)),
-                ),
-            )
-            .subscribe((res) => {
-                this.currentRoom.set(res.game);
-
-                if (res.game.status === 'active') {
-                    this.stopRoomPolling();
-                    this.router.navigate(['/game', gameId]);
-                }
-            });
-    }
-
-    stopRoomPolling(): void {
-        this.pollSub?.unsubscribe();
-        this.pollSub = null;
-    }
-
-    refreshCurrentRoom(): void {
-        const id = this.currentRoom()?.id;
-        if (!id) return;
-        this.fetchLobbySnapshot(id);
+    initRoom(gameId: string): void {
+        const status = this.lobbyWs.connectionStatus();
+        if (status !== 'connected' && status !== 'connecting') {
+            this.lobbyWs.connect(gameId);
+        }
     }
 
     clearError(): void {
         this.error.set(null);
     }
 
-    private setError(kind: any, message: string): void {
+    private enterRoom(gameId: string): void {
+        this.lobbyWs.connect(gameId);
+        this.router.navigate(['/lobby', gameId]);
+    }
+
+    private setError(kind: string, message: string): void {
         this.error.set({ kind, message });
     }
 
@@ -215,30 +194,5 @@ export class LobbyStore {
         if (err.status === 404) return 'Комната с таким кодом не найдена';
         if (err.status === 409) return 'Игра уже началась или заполнена';
         return this.httpMessage(err, 'Не удалось войти по коду');
-    }
-
-    private enterRoom(id: string): void {
-        this.fetchLobbySnapshot(id, () => {
-            this.router.navigate(['/lobby', id]);
-        });
-    }
-
-    private fetchLobbySnapshot(id: string, onSuccess?: () => void): void {
-        this.api.getLobbySnapshot(id).subscribe({
-            next: (res) => {
-                this.currentRoom.set(res.game);
-                onSuccess?.();
-            },
-            error: (err: HttpErrorResponse) => {
-                this.setError(
-                    'load_failed',
-                    this.httpMessage(err, 'Не удалось загрузить комнату'),
-                );
-            },
-        });
-    }
-
-    ngOnDestroy(): void {
-        this.stopRoomPolling();
     }
 }

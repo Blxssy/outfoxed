@@ -78,9 +78,9 @@
                             track slot
                         ) {
                             <li class="player-item player-item--empty">
-                                <span class="player-item__seat">{{
-                                    room()!.players.length + slot
-                                }}</span>
+                                <span class="player-item__seat">
+                                    {{ room()!.players.length + slot }}
+                                </span>
                                 <span class="player-item__name"
                                     >Ожидание...</span
                                 >
@@ -90,8 +90,18 @@
                 </fox-card>
             </section>
 
-            @if (error()) {
-                <div class="room-error">{{ error() }}</div>
+            @if (wsError()) {
+                <div class="room-error">{{ wsError()!.message }}</div>
+            }
+
+            @if (httpError()) {
+                <div class="room-error">{{ httpError()!.message }}</div>
+            }
+
+            @if (isReconnecting()) {
+                <div class="room-reconnecting">
+                    Восстановление соединения...
+                </div>
             }
 
             @if (canStart()) {
@@ -105,7 +115,13 @@
                 />
             } @else {
                 <fox-card>
-                    <p class="room-waiting-hint">Ожидаем игроков…</p>
+                    <p class="room-waiting-hint">
+                        @if (isReconnecting()) {
+                            Нет соединения…
+                        } @else {
+                            Ожидаем игроков начала игры...
+                        }
+                    </p>
                 </fox-card>
             }
         </main>

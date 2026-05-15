@@ -1,0 +1,27 @@
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-icon">🎲</span>
+        <span class="panel-title">Бросок кубиков</span>
+    </div>
+    <div class="panel-body">
+        <div class="dice-hint">Выберите цель на этот ход:</div>
+
+        <div class="dice-options">
+            <div
+                class="dice-option"
+                [class.selected]="selectedTarget === 'eyes'"
+                (click)="selectTarget('eyes')"
+            >
+                <span class="opt-name">Искать Улики</span>
+            </div>
+
+            <div
+                class="dice-option"
+                [class.selected]="selectedTarget === 'paws'"
+                (click)="selectTarget('paws')"
+            >
+                <span class="opt-name">Опросить Свидетелей</span>
+            </div>
+        </div>
+    </div>
+</div>
