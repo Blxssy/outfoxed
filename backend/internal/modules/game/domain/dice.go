@@ -1,10 +1,10 @@
 package domain
 
-type DiceFace string
-
 const (
-	FaceFootprint string = "footprint"
-	FaceEye       string = "eye"
+	FaceFootprint = "footprint"
+	FaceEye       = "eye"
+	DiceCount     = 3
+	MaxRolls      = 3
 )
 
 type RollResult struct {
@@ -14,49 +14,8 @@ type RollResult struct {
 	Success  bool     `json:"success"`
 }
 
-func RollForGoal(goal GoalType, rng RNG) RollResult {
-	want := faceForGoal(goal)
-
-	kept := make([]string, 0, 3)
-	attempts := 0
-
-	for attempts < 3 && len(kept) < 3 {
-		attempts++
-
-		need := 3 - len(kept)
-		for i := 0; i < need; i++ {
-			f := rollOneDice(rng)
-			if f == want {
-				kept = append(kept, f)
-			}
-		}
-	}
-
-	faces := make([]string, 0, 3)
-	for i := 0; i < len(kept); i++ {
-		faces = append(faces, want)
-	}
-	for len(faces) < 3 {
-		faces = append(faces, oppositeFace(want))
-	}
-
-	return RollResult{
-		Goal:     goal,
-		Attempts: attempts,
-		Faces:    faces,
-		Success:  len(kept) == 3,
-	}
-}
-
 func faceForGoal(goal GoalType) string {
 	if goal == GoalClue {
-		return FaceFootprint
-	}
-	return FaceEye
-}
-
-func rollOneDice(rng RNG) string {
-	if rng.Intn(2) == 0 {
 		return FaceFootprint
 	}
 	return FaceEye
@@ -67,4 +26,71 @@ func oppositeFace(f string) string {
 		return FaceEye
 	}
 	return FaceFootprint
+}
+
+func rollOneFace(rng RNG) string {
+	if rng.Intn(2) == 0 {
+		return FaceFootprint
+	}
+	return FaceEye
+}
+
+func rollInitialFaces(rng RNG) []string {
+	return []string{
+		rollOneFace(rng),
+		rollOneFace(rng),
+		rollOneFace(rng),
+	}
+}
+
+func rerollFaces(current []string, keep []bool, rng RNG) []string {
+	out := make([]string, len(current))
+	copy(out, current)
+
+	for i := range out {
+		if i >= len(keep) || !keep[i] {
+			out[i] = rollOneFace(rng)
+		}
+	}
+
+	return out
+}
+
+func isRollSuccessful(goal GoalType, faces []string) bool {
+	want := faceForGoal(goal)
+	for _, f := range faces {
+		if f != want {
+			return false
+		}
+	}
+	return len(faces) == DiceCount
+}
+
+// Старый авто-режим оставляем для timeout/fallback.
+func RollForGoal(goal GoalType, rng RNG) RollResult {
+	faces := rollInitialFaces(rng)
+	attempts := 1
+
+	success := isRollSuccessful(goal, faces)
+	for attempts < MaxRolls && !success {
+		keep := make([]bool, len(faces))
+		want := faceForGoal(goal)
+
+		for i, f := range faces {
+			if f == want {
+				keep[i] = true
+			}
+		}
+
+		faces = rerollFaces(faces, keep, rng)
+		attempts++
+		success = isRollSuccessful(goal, faces)
+	}
+
+	return RollResult{
+		Goal:     goal,
+		Attempts: attempts,
+		Faces:    faces,
+		Success:  success,
+	}
 }

@@ -4,12 +4,14 @@ type CommandType string
 
 const (
 	CmdChooseGoal     CommandType = "choose_goal"
-	CmdRollAuto       CommandType = "roll_auto" // MVP: сервер сам делает до 3 попыток
+	CmdRerollDice     CommandType = "reroll_dice"
+	CmdFinishRoll     CommandType = "finish_roll"
 	CmdMovePawn       CommandType = "move_pawn"
-	CmdEndTurn        CommandType = "end_turn"
 	CmdTakeClue       CommandType = "take_clue"
 	CmdRevealSuspects CommandType = "reveal_suspects"
+	CmdEndTurn        CommandType = "end_turn"
 	CmdAccuse         CommandType = "accuse"
+	CmdRollAuto       CommandType = "roll_auto" // можно оставить для timeout/автохода
 )
 
 type Command interface {
@@ -43,8 +45,8 @@ func (c RollAutoCommand) Actor() PlayerID   { return c.Player }
 
 // MovePawnCommand: игрок тратит часть или все доступные шаги.
 type MovePawnCommand struct {
-	Player PlayerID `json:"player"`
-	Steps  int      `json:"steps"`
+	Player      PlayerID `json:"player"`
+	TargetIndex int      `json:"targetIndex"`
 }
 
 func (c MovePawnCommand) Type() CommandType { return CmdMovePawn }
@@ -83,3 +85,18 @@ type AccuseCommand struct {
 
 func (c AccuseCommand) Type() CommandType { return CmdAccuse }
 func (c AccuseCommand) Actor() PlayerID   { return c.Player }
+
+type RerollDiceCommand struct {
+	Player      PlayerID `json:"player"`
+	KeepIndices []int    `json:"keepIndices"`
+}
+
+func (c RerollDiceCommand) Type() CommandType { return CmdRerollDice }
+func (c RerollDiceCommand) Actor() PlayerID   { return c.Player }
+
+type FinishRollCommand struct {
+	Player PlayerID `json:"player"`
+}
+
+func (c FinishRollCommand) Type() CommandType { return CmdFinishRoll }
+func (c FinishRollCommand) Actor() PlayerID   { return c.Player }

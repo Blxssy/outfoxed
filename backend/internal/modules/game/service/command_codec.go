@@ -34,23 +34,40 @@ func DecodeCommand(req WSRequest, actorID domain.PlayerID) (domain.Command, erro
 			Goal:   goal,
 		}, nil
 
+	case string(domain.CmdRerollDice):
+		var p struct {
+			KeepIndices []int `json:"keepIndices"`
+		}
+		if err := json.Unmarshal(req.Payload, &p); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+
+		return domain.RerollDiceCommand{
+			Player:      actorID,
+			KeepIndices: p.KeepIndices,
+		}, nil
+
+	case string(domain.CmdFinishRoll):
+		return domain.FinishRollCommand{
+			Player: actorID,
+		}, nil
+
 	case string(domain.CmdRollAuto):
-		// payload может быть пустым
+		// fallback для автохода / таймаута
 		return domain.RollAutoCommand{
 			Player: actorID,
 		}, nil
 
 	case string(domain.CmdMovePawn):
 		var p struct {
-			Steps int `json:"steps"`
+			TargetIndex int `json:"targetIndex"`
 		}
 		if err := json.Unmarshal(req.Payload, &p); err != nil {
 			return nil, fmt.Errorf("invalid payload: %w", err)
 		}
-
 		return domain.MovePawnCommand{
-			Player: actorID,
-			Steps:  p.Steps,
+			Player:      actorID,
+			TargetIndex: p.TargetIndex,
 		}, nil
 
 	case string(domain.CmdTakeClue):

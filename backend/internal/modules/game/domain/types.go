@@ -48,6 +48,8 @@ type ActionType string
 
 const (
 	ActionChooseGoal     ActionType = "choose_goal"
+	ActionRerollDice     ActionType = "reroll_dice"
+	ActionFinishRoll     ActionType = "finish_roll"
 	ActionRollAuto       ActionType = "roll_auto"
 	ActionMovePawn       ActionType = "move_pawn"
 	ActionTakeClue       ActionType = "take_clue"
@@ -63,7 +65,8 @@ const (
 	ClueTraitHat      ClueTrait = "hat"
 	ClueTraitScarf    ClueTrait = "scarf"
 	ClueTraitUmbrella ClueTrait = "umbrella"
-	ClueTraitColor    ClueTrait = "color"
+	ClueTraitBag      ClueTrait = "bag"
+	ClueTraitBoots    ClueTrait = "boots"
 )
 
 type TraitValue string
@@ -72,13 +75,6 @@ const (
 	TraitUnknown TraitValue = "unknown"
 	TraitYes     TraitValue = "yes"
 	TraitNo      TraitValue = "no"
-
-	// Цвета и прочие конкретные значения расширяются по мере наполнения набора карт.
-	TraitRed    TraitValue = "red"
-	TraitBlue   TraitValue = "blue"
-	TraitGreen  TraitValue = "green"
-	TraitYellow TraitValue = "yellow"
-	TraitPurple TraitValue = "purple"
 )
 
 type SuspectCode string

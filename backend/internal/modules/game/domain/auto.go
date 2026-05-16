@@ -16,15 +16,18 @@ func BuildAutoCommand(st GameState, rng RNG) (Command, bool) {
 		}, true
 
 	case PhaseRolling:
-		return RollAutoCommand{Player: actor}, true
+		// Пока самый безопасный вариант: завершаем текущий бросок как есть.
+		return FinishRollCommand{Player: actor}, true
 
 	case PhaseMovePawn:
-		if st.TurnState.Move == nil || st.TurnState.Move.StepsRemaining <= 0 {
-			return nil, false
+		if st.TurnState.Move == nil || len(st.TurnState.Move.ReachableCells) == 0 {
+			return EndTurnCommand{Player: actor}, true
 		}
+
+		target := st.TurnState.Move.ReachableCells[0]
 		return MovePawnCommand{
-			Player: actor,
-			Steps:  st.TurnState.Move.StepsRemaining,
+			Player:      actor,
+			TargetIndex: target,
 		}, true
 
 	case PhaseResolveClue:

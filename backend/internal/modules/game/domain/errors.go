@@ -24,4 +24,6 @@ var (
 	ErrInvalidRevealSelection = errors.New("invalid reveal selection")
 	ErrSuspectNotFound        = errors.New("suspect not found")
 	ErrSuspectAlreadyRevealed = errors.New("suspect already revealed")
+
+	ErrNoRollsLeft = errors.New("no rolls left")
 )

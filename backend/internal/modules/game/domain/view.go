@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type PlayerView struct {
 	UserID    PlayerID `json:"userId"`
 	Seat      int      `json:"seat"`
@@ -8,62 +10,76 @@ type PlayerView struct {
 	Connected bool     `json:"connected"`
 }
 
-type TurnView struct {
-	Goal    TurnGoal      `json:"goal"`
-	Pending PendingAction `json:"pending"`
+type RollView struct {
+	RollsUsed int      `json:"rollsUsed"`
+	MaxRolls  int      `json:"maxRolls"`
+	Faces     []string `json:"faces"`
+	Kept      []bool   `json:"kept"`
+	Success   bool     `json:"success"`
+}
 
-	Roll *RollState `json:"roll,omitempty"`
-	Move *MoveState `json:"move,omitempty"`
+type MoveView struct {
+	StepsTotal     int   `json:"stepsTotal"`
+	StepsRemaining int   `json:"stepsRemaining"`
+	ReachableCells []int `json:"reachableCells,omitempty"`
 }
 
 type GameView struct {
-	ID         string     `json:"id"`
-	Status     GameStatus `json:"status"`
-	Phase      GamePhase  `json:"phase"`
-	Result     GameResult `json:"result,omitempty"`
-	Version    int        `json:"version"`
-	Turn       int        `json:"turn"`
-	ActiveSeat int        `json:"activeSeat"`
+	ID             string     `json:"id"`
+	Status         GameStatus `json:"status"`
+	Phase          GamePhase  `json:"phase"`
+	Result         GameResult `json:"result,omitempty"`
+	Version        int        `json:"version"`
+	Turn           int        `json:"turn"`
+	ActiveSeat     int        `json:"activeSeat"`
+	TurnDeadlineAt *time.Time `json:"turnDeadlineAt,omitempty"`
 
-	Me        PlayerView        `json:"me"`
-	Players   []PlayerView      `json:"players"`
-	Board     BoardView         `json:"board"`
-	Fox       FoxView           `json:"fox"`
-	Suspects  []SuspectCardView `json:"suspects"`
-	Clues     []ClueTokenView   `json:"clues"`
-	TurnState TurnView          `json:"turnState"`
+	Me       *PlayerView       `json:"me,omitempty"`
+	Players  []PlayerView      `json:"players"`
+	Board    BoardView         `json:"board"`
+	Fox      FoxView           `json:"fox"`
+	Suspects []SuspectCardView `json:"suspects"`
+	Clues    []ClueTokenView   `json:"clues"`
+
+	Move *MoveView `json:"move,omitempty"`
+	Roll *RollView `json:"roll,omitempty"`
 
 	AvailableActions []ActionType `json:"availableActions"`
 }
 
 func BuildGameView(st GameState, userID PlayerID) GameView {
-	me, _ := findPlayerByID(st.Players, userID)
+	meState, ok := findPlayerByID(st.Players, userID)
+
+	var me *PlayerView
+	if ok {
+		me = &PlayerView{
+			UserID:    meState.UserID,
+			Seat:      meState.Seat,
+			Name:      meState.Name,
+			PawnCell:  meState.PawnCell,
+			Connected: meState.Connected,
+		}
+	}
 
 	view := GameView{
-		ID:         st.ID,
-		Status:     st.Status,
-		Phase:      st.Phase,
-		Result:     st.Result,
-		Version:    st.Version,
-		Turn:       st.Turn,
-		ActiveSeat: st.ActiveSeat,
+		ID:             st.ID,
+		Status:         st.Status,
+		Phase:          st.Phase,
+		Result:         st.Result,
+		Version:        st.Version,
+		Turn:           st.Turn,
+		ActiveSeat:     st.ActiveSeat,
+		TurnDeadlineAt: st.TurnDeadlineAt,
 
-		Me: PlayerView{
-			UserID:    me.UserID,
-			Seat:      me.Seat,
-			Name:      me.Name,
-			PawnCell:  me.PawnCell,
-			Connected: me.Connected,
-		},
-		Players: make([]PlayerView, 0, len(st.Players)),
-		Board:   buildBoardView(st.Board),
-		Fox: FoxView{
-			Track:    st.Fox.Track,
-			EscapeAt: st.Fox.EscapeAt,
-		},
-		Suspects:         make([]SuspectCardView, 0, len(st.Suspects)),
-		Clues:            make([]ClueTokenView, 0, len(st.Clues)),
-		TurnState:        TurnView(st.TurnState),
+		Me:       me,
+		Players:  make([]PlayerView, 0, len(st.Players)),
+		Board:    buildBoardView(st.Board),
+		Fox:      FoxView{Track: st.Fox.Track, EscapeAt: st.Fox.EscapeAt},
+		Suspects: make([]SuspectCardView, 0, len(st.Suspects)),
+		Clues:    make([]ClueTokenView, 0, len(st.Clues)),
+
+		Move:             buildMoveView(st.TurnState.Move),
+		Roll:             buildRollView(st.TurnState.Roll),
 		AvailableActions: AvailableActionsFor(st, userID),
 	}
 
@@ -84,7 +100,6 @@ func BuildGameView(st GameState, userID PlayerID) GameView {
 			Excluded: s.Excluded,
 		}
 
-		// traits отдаём только если карта уже раскрыта
 		if s.Revealed {
 			traits := s.Traits
 			item.Traits = &traits
@@ -100,7 +115,6 @@ func BuildGameView(st GameState, userID PlayerID) GameView {
 			BoardCell: c.BoardCell,
 		}
 
-		// trait/result отдаём только если улика уже раскрыта
 		if c.Revealed {
 			trait := c.Trait
 			item.Trait = &trait
@@ -128,6 +142,41 @@ func buildBoardView(board BoardState) BoardView {
 	}
 
 	return out
+}
+
+func buildMoveView(move *MoveState) *MoveView {
+	if move == nil {
+		return nil
+	}
+
+	cells := make([]int, len(move.ReachableCells))
+	copy(cells, move.ReachableCells)
+
+	return &MoveView{
+		StepsTotal:     move.StepsTotal,
+		StepsRemaining: move.StepsRemaining,
+		ReachableCells: cells,
+	}
+}
+
+func buildRollView(roll *RollState) *RollView {
+	if roll == nil {
+		return nil
+	}
+
+	faces := make([]string, len(roll.Faces))
+	copy(faces, roll.Faces)
+
+	kept := make([]bool, len(roll.Kept))
+	copy(kept, roll.Kept)
+
+	return &RollView{
+		RollsUsed: roll.RollsUsed,
+		MaxRolls:  roll.MaxRolls,
+		Faces:     faces,
+		Kept:      kept,
+		Success:   roll.Success,
+	}
 }
 
 func findPlayerByID(players []PlayerState, userID PlayerID) (PlayerState, bool) {
@@ -158,7 +207,8 @@ func AvailableActionsFor(st GameState, userID PlayerID) []ActionType {
 
 	case PhaseRolling:
 		return []ActionType{
-			ActionRollAuto,
+			ActionRerollDice,
+			ActionFinishRoll,
 			ActionAccuse,
 		}
 

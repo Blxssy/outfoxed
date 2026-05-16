@@ -148,7 +148,7 @@ func (s *Service) CreateGame(ctx context.Context, opts CreateGameOpts) (CreateGa
 		return CreateGameResult{}, fmt.Errorf("get game players: %w", err)
 	}
 
-	stateJSON, waitingState, err := buildWaitingStateJSON(row.ID, players)
+	stateJSON, waitingState, err := s.buildWaitingStateJSON(row.ID, players)
 	if err != nil {
 		return CreateGameResult{}, err
 	}
@@ -376,7 +376,7 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 	}
 
 	// Пересобираем waiting state
-	stateJSON, waitingState, err := buildWaitingStateJSON(gameID, updatedPlayers)
+	stateJSON, waitingState, err := s.buildWaitingStateJSON(gameID, updatedPlayers)
 	if err != nil {
 		return LeaveGameResult{}, err
 	}
@@ -430,7 +430,7 @@ func (s *Service) StartGame(ctx context.Context, gameID string, userID string) (
 		return StartResult{}, ErrNotEnoughPlayers
 	}
 
-	activeState := domain.NewActiveGameState(gameID, toSetupPlayers(players))
+	activeState := domain.NewActiveGameState(gameID, toSetupPlayers(players), s.nextRNG())
 	stateJSON, err := json.Marshal(activeState)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("marshal active state: %w", err)
@@ -465,15 +465,6 @@ func (s *Service) GetViewState(ctx context.Context, gameID string, userID string
 	}
 
 	return StateResult{State: view}, nil
-}
-
-func buildWaitingStateJSON(gameID string, players []repo.GamePlayerRow) ([]byte, domain.GameState, error) {
-	waitingState := domain.NewWaitingGameState(gameID, toSetupPlayers(players))
-	stateJSON, err := json.Marshal(waitingState)
-	if err != nil {
-		return nil, domain.GameState{}, fmt.Errorf("marshal waiting state: %w", err)
-	}
-	return stateJSON, waitingState, nil
 }
 
 func toSetupPlayers(players []repo.GamePlayerRow) []domain.SetupPlayer {
@@ -621,7 +612,7 @@ func (s *Service) joinGameTx(ctx context.Context, tx *sql.Tx, gameID string, use
 		return JoinGameResult{}, domain.GameState{}, fmt.Errorf("get updated players: %w", err)
 	}
 
-	stateJSON, waitingState, err := buildWaitingStateJSON(gameID, updatedPlayers)
+	stateJSON, waitingState, err := s.buildWaitingStateJSON(gameID, updatedPlayers)
 	if err != nil {
 		return JoinGameResult{}, domain.GameState{}, err
 	}
@@ -640,4 +631,20 @@ func (s *Service) joinGameTx(ctx context.Context, tx *sql.Tx, gameID string, use
 			Seat:   seat,
 		},
 	}, waitingState, nil
+}
+
+func (s *Service) nextRNG() domain.RNG {
+	if s.rng == nil {
+		panic("game service RNGFactory is nil")
+	}
+	return s.rng()
+}
+
+func (s *Service) buildWaitingStateJSON(gameID string, players []repo.GamePlayerRow) ([]byte, domain.GameState, error) {
+	waitingState := domain.NewWaitingGameState(gameID, toSetupPlayers(players), s.nextRNG())
+	stateJSON, err := json.Marshal(waitingState)
+	if err != nil {
+		return nil, domain.GameState{}, fmt.Errorf("marshal waiting state: %w", err)
+	}
+	return stateJSON, waitingState, nil
 }
