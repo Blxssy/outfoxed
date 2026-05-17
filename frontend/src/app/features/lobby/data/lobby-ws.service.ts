@@ -62,7 +62,7 @@ export class LobbyWsService implements OnDestroy {
         this.msgSub?.unsubscribe();
 
         this.msgSub = this.ws.message$.subscribe((raw: WsRawMessage) => {
-            if (raw.type === 'update') {
+            if (raw.type === 'game_update' || raw.type === 'update') {
                 const state = (raw.payload as any)?.state;
                 if (!state) return;
                 this.handleUpdate(state, gameId);

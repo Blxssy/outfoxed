@@ -1,9 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 
-export interface PlayerCardData {
-    id: number;
+export type PlayerCardData = {
+    userId: string;
+    seat: number;
     name: string;
-}
+    pawnCell: number;
+    connected: boolean;
+};
 
 @Component({
     selector: 'app-player-cards',
@@ -12,23 +15,7 @@ export interface PlayerCardData {
     styleUrl: './player-cards.component.scss',
 })
 export class PlayerCardsComponent {
-    players: PlayerCardData[] = [
-        {
-            id: 0,
-            name: 'Алиса',
-        },
-        {
-            id: 1,
-            name: 'Борис',
-        },
-        {
-            id: 2,
-            name: 'Вера',
-        },
-        {
-            id: 3,
-            name: 'Гриша',
-        },
-    ];
-    currentPlayerId = 0;
+    players = input.required<PlayerCardData[]>();
+
+    currentPlayerSeat = input.required();
 }

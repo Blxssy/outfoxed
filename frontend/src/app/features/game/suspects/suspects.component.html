@@ -2,7 +2,7 @@
     <div class="panel-header">
         <span class="panel-title">Подозреваемые</span>
         <span class="panel-subtitle"
-            >{{ revealedCount }} / {{ suspects.length }} открыто</span
+            >{{ revealedCount }} / {{ suspects().length }} открыто</span
         >
     </div>
     <div class="panel-hint">
@@ -12,18 +12,18 @@
     <div class="panel-body">
         <div class="suspects-scroll">
             <div class="suspects-grid">
-                @for (s of suspects; track s.id) {
+                @for (s of suspects(); track s.id) {
                     <div
                         class="suspect-card"
-                        [class.revealed]="s.state === 'revealed'"
-                        [class.innocent]="s.state === 'innocent'"
-                        [title]="s.state !== 'unknown' ? s.name : 'Неизвестно'"
+                        [class.revealed]="s.revealed"
+                        [class.innocent]="s.excluded"
+                        [title]="!s.revealed ? s.id : 'Неизвестно'"
                     >
-                        @if (s.state === "unknown") {
+                        @if (!s.revealed) {
                             <span class="suspect-q">?</span>
                             <span class="suspect-label">Неизвестно</span>
-                        } @else if (s.state === "revealed") {
-                            <span class="suspect-label">{{ s.name }}</span>
+                        } @else if (s.revealed) {
+                            <span class="suspect-label">{{ s.id }}</span>
                         } @else {
                             <span class="suspect-label muted">Невиновен</span>
                         }

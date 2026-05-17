@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 @Component({
     selector: 'app-fox-track',
@@ -7,12 +7,14 @@ import { Component } from '@angular/core';
     styleUrl: './fox-track.component.scss',
 })
 export class FoxTrackComponent {
-    state = { foxPosition: 16, totalSteps: 16 };
+    foxTrack = input<number>(0);
+    escapeAt = input<number>(15);
+
+    startStep = 1;
+    finishStep = computed(() => this.escapeAt() + 1);
+    foxPosition = computed(() => this.foxTrack() + 1);
 
     get steps(): number[] {
-        return Array.from(
-            { length: this.state.totalSteps - 1 },
-            (_, i) => this.state.totalSteps - 1 - i,
-        );
+        return Array.from({ length: this.finishStep() - 1 }, (_, i) => i + 2);
     }
 }

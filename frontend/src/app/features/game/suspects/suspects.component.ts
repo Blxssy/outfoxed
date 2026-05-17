@@ -1,12 +1,10 @@
-import { Component, signal } from '@angular/core';
+import { Component, input } from '@angular/core';
 
-export interface Suspect {
-    id: number;
-    name: string;
-    state: SuspectState;
-}
-
-export type SuspectState = 'unknown' | 'revealed' | 'innocent';
+export type Suspect = {
+    id: string;
+    revealed: boolean;
+    excluded: boolean;
+};
 
 @Component({
     selector: 'app-suspects',
@@ -15,26 +13,9 @@ export type SuspectState = 'unknown' | 'revealed' | 'innocent';
     styleUrl: './suspects.component.scss',
 })
 export class SuspectsComponent {
-    suspects: Suspect[] = [
-        {
-            id: 0,
-            name: 'mr Fox',
-            state: 'revealed',
-        },
-        {
-            id: 1,
-            name: 'ms Foxy',
-            state: 'unknown',
-        },
-        {
-            id: 2,
-            name: 'mini Fox',
-            state: 'innocent',
-        },
-    ];
-    // suspectClicked = output();
+    suspects = input.required<Suspect[]>();
 
     get revealedCount(): number {
-        return this.suspects.filter((s) => s.state === 'revealed').length;
+        return this.suspects().filter((s) => s.revealed === true).length;
     }
 }

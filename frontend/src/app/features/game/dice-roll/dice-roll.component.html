@@ -2,26 +2,126 @@
     <div class="panel-header">
         <span class="panel-icon">🎲</span>
         <span class="panel-title">Бросок кубиков</span>
+
+        @if (goalIsSet()) {
+            <span class="panel-goal-badge">
+                {{ goalLabel(goalType()) }}
+            </span>
+        }
     </div>
+
     <div class="panel-body">
-        <div class="dice-hint">Выберите цель на этот ход:</div>
+        @if (canChooseGoal()) {
+            <p class="dice-hint">Выберите цель на этот ход:</p>
 
-        <div class="dice-options">
-            <div
-                class="dice-option"
-                [class.selected]="selectedTarget === 'eyes'"
-                (click)="selectTarget('eyes')"
-            >
-                <span class="opt-name">Искать Улики</span>
+            <div class="dice-options">
+                <div
+                    class="dice-option"
+                    [class.selected]="goalType() === 'clue'"
+                    [class.disabled]="disabled()"
+                    (click)="chooseGoal('clue')"
+                >
+                    <span class="opt-icon">🐾</span>
+                    <div class="opt-info">
+                        <span class="opt-name">Искать Улики</span>
+                        <span class="opt-desc"
+                            >Нужны следы на всех кубиках</span
+                        >
+                    </div>
+                </div>
+
+                <div
+                    class="dice-option"
+                    [class.selected]="goalType() === 'suspect'"
+                    [class.disabled]="disabled()"
+                    (click)="chooseGoal('suspect')"
+                >
+                    <span class="opt-icon">👁️</span>
+                    <div class="opt-info">
+                        <span class="opt-name">Опросить Свидетелей</span>
+                        <span class="opt-desc"
+                            >Нужны глаза на всех кубиках</span
+                        >
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (isMyTurn() && rollDone()) {
+            <p class="dice-hint">
+                Цель: нужны <strong>{{ targetFace() }}</strong> · перебросов
+                осталось: <strong>{{ rerollsLeft() }}</strong>
+            </p>
+
+            <div class="dice-row" [class.rolling]="isRolling()">
+                @for (i of diceIndices; track i) {
+                    <button
+                        class="die"
+                        [class.die--kept]="isKept(i)"
+                        [class.die--match]="isFaceMatch(faces()[i])"
+                        [class.die--rolling]="isRolling() && !isKept(i)"
+                        [class.die--readonly]="
+                            !canReroll() || rerollsLeft() === 0
+                        "
+                        [disabled]="
+                            !canReroll() || rerollsLeft() === 0 || disabled()
+                        "
+                        (click)="toggleKeep(i)"
+                        [title]="
+                            isKept(i)
+                                ? 'Зафиксирован'
+                                : 'Нажми, чтобы зафиксировать'
+                        "
+                    >
+                        <span class="die__face">{{
+                            faceSymbol(faces()[i])
+                        }}</span>
+                        @if (isKept(i)) {
+                            <span class="die__lock">🔒</span>
+                        }
+                    </button>
+                }
             </div>
 
-            <div
-                class="dice-option"
-                [class.selected]="selectedTarget === 'paws'"
-                (click)="selectTarget('paws')"
-            >
-                <span class="opt-name">Опросить Свидетелей</span>
+            @if (canReroll() && rerollsLeft() > 0) {
+                <p class="dice-keep-hint">
+                    Нажми на кубик чтобы зафиксировать, затем перебрось
+                    остальные
+                </p>
+            }
+
+            <div class="dice-actions">
+                @if (canReroll()) {
+                    <button
+                        class="dice-btn dice-btn--reroll"
+                        [disabled]="
+                            disabled() || isRolling() || rerollsLeft() === 0
+                        "
+                        (click)="reroll()"
+                    >
+                        Переброс
+                        @if (keptIndices().length > 0) {
+                            (оставить {{ keptIndices().length }})
+                        }
+                    </button>
+                }
+
+                @if (canFinishRoll()) {
+                    <button
+                        class="dice-btn dice-btn--finish"
+                        [disabled]="disabled()"
+                        (click)="finishRoll()"
+                    >
+                        Завершить бросок
+                    </button>
+                }
             </div>
-        </div>
+        }
+
+        @if (!isMyTurn()) {
+            <p class="dice-hint dice-hint--muted">
+                Ожидаем хода другого игрока...
+            </p>
+        }
     </div>
 </div>

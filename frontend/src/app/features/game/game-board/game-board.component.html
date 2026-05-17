@@ -2,58 +2,48 @@
     <div class="board-frame">
         <div class="board-container">
             <div class="grid">
-                @for (row of state.cells; track $index; let ri = $index) {
-                    <ng-container>
-                        @for (cell of row; track $index; let ci = $index) {
-                            <div
-                                class="cell"
-                                [class.reachable]="isReachable(ri, ci)"
-                                (click)="onCellClick(cell)"
-                            >
-                                @for (
-                                    entry of getPlayersAt(ri, ci);
-                                    track $index;
-                                    let i = $index
-                                ) {
-                                    <ng-container>
-                                        <div class="player-token">
-                                            <div
-                                                class="token-circle"
-                                                [class.active]="
-                                                    entry.player.id ===
-                                                    state.currentPlayerId
-                                                "
-                                                [class]="
-                                                    'token-circle' +
-                                                    (entry.total > 1
-                                                        ? ' offset-' + i
-                                                        : '') +
-                                                    (entry.player.id ===
-                                                    state.currentPlayerId
-                                                        ? ' active'
-                                                        : '')
-                                                "
-                                                [style.background]="
-                                                    entry.player.color
-                                                "
-                                                [attr.title]="entry.player.name"
-                                            >
-                                                {{ entry.player.name[0] }}
-                                                @if (
-                                                    entry.player.id ===
-                                                    state.currentPlayerId
-                                                ) {
-                                                    <div
-                                                        class="active-ring"
-                                                    ></div>
-                                                }
-                                            </div>
-                                        </div>
-                                    </ng-container>
-                                }
-                            </div>
-                        }
-                    </ng-container>
+                @for (row of rows(); track $index) {
+                    @for (cell of row; track cell.index) {
+                        <div
+                            class="cell"
+                            [class.cell--clue]="cell.hasClue"
+                            [class.cell--reachable]="isReachable(cell.index)"
+                            (click)="onCellClick(cell)"
+                        >
+                            @for (
+                                entry of playersAt(cell.index);
+                                track entry.player.userId;
+                                let i = $index
+                            ) {
+                                <div
+                                    class="token"
+                                    [class]="seatClass(entry.player.seat)"
+                                    [class.token--active]="
+                                        isActivePlayer(entry.player)
+                                    "
+                                    [class.token--me]="isMe(entry.player)"
+                                    [class.token--offset-0]="
+                                        entry.total > 1 && i === 0
+                                    "
+                                    [class.token--offset-1]="
+                                        entry.total > 1 && i === 1
+                                    "
+                                    [class.token--offset-2]="
+                                        entry.total > 1 && i === 2
+                                    "
+                                    [class.token--offset-3]="
+                                        entry.total > 1 && i === 3
+                                    "
+                                    [attr.title]="entry.player.name"
+                                >
+                                    {{ entry.player.name[0] }}
+                                    @if (isActivePlayer(entry.player)) {
+                                        <div class="token__ring"></div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
                 }
             </div>
         </div>
