@@ -19,7 +19,7 @@ interface GamesListResponse {
 @Injectable({ providedIn: 'root' })
 export class LobbyApiService {
     private readonly http = inject(HttpClient);
-    private readonly api = 'http://localhost:8080/api/v1/games';
+    private readonly api = '/api/v1/games';
 
     getPublicGames(): Observable<GamesListResponse> {
         return this.http.get<GamesListResponse>(this.api);
