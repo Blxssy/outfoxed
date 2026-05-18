@@ -8,7 +8,6 @@ import {
     WsRawMessage,
 } from 'src/app/services/websocket/websocket.service';
 import { TokenService } from 'src/app/services/auth/token.service';
-const WS_BASE = 'ws://localhost:8080';
 
 @Injectable({ providedIn: 'root' })
 export class LobbyWsService implements OnDestroy {
@@ -20,7 +19,6 @@ export class LobbyWsService implements OnDestroy {
     private currentGameId: string | null = null;
 
     readonly lobbySnapshot = signal<LobbySnapshot | null>(null);
-
     readonly wsError = signal<{ code: string; message: string } | null>(null);
 
     readonly connectionStatus = this.ws.status;
@@ -44,7 +42,11 @@ export class LobbyWsService implements OnDestroy {
         this.currentGameId = gameId;
         this.reset();
         this.subscribeToMessages(gameId);
-        this.ws.connect(`${WS_BASE}/ws/games/${gameId}?token=${token}`);
+
+        const wsBase = WebSocketService.resolveWsBase();
+        this.ws.connect(
+            `${wsBase}/ws/games/${gameId}?token=${encodeURIComponent(token)}`,
+        );
     }
 
     disconnect(): void {

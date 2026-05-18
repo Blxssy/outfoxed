@@ -44,7 +44,7 @@ func NewWaitingGameState(gameID string, players []SetupPlayer, rng RNG) GameStat
 		Board: board,
 		Fox: FoxState{
 			Track:    0,
-			EscapeAt: 15,
+			EscapeAt: FoxEscapeAt,
 		},
 
 		Suspects:  newDefaultSuspects(rng),
@@ -161,11 +161,7 @@ func newDefaultSuspects(rng RNG) []SuspectCard {
 
 	shuffleSuspectCodes(namePool, rng)
 
-	allCombos := allSuspectTraitCombos()
-	shuffleSuspectTraits(allCombos, rng)
-
-	selectedCombos := make([]SuspectTraits, 16)
-	copy(selectedCombos, allCombos[:16])
+	masks := uniqueRandomMasks(16, 12, rng)
 
 	suspects := make([]SuspectCard, 0, 16)
 	for i := 0; i < 16; i++ {
@@ -174,11 +170,45 @@ func newDefaultSuspects(rng RNG) []SuspectCard {
 			Code:     namePool[i],
 			Revealed: false,
 			Excluded: false,
-			Traits:   selectedCombos[i],
+			Traits:   traitsFromMask(masks[i]),
 		})
 	}
 
 	return suspects
+}
+
+func uniqueRandomMasks(count int, bits int, rng RNG) []int {
+	maxMask := 1 << bits
+	used := make(map[int]struct{}, count)
+	out := make([]int, 0, count)
+
+	for len(out) < count {
+		mask := rng.Intn(maxMask)
+		if _, ok := used[mask]; ok {
+			continue
+		}
+		used[mask] = struct{}{}
+		out = append(out, mask)
+	}
+
+	return out
+}
+
+func traitsFromMask(mask int) SuspectTraits {
+	return SuspectTraits{
+		Glasses:  bitToTrait((mask >> 0) & 1),
+		Hat:      bitToTrait((mask >> 1) & 1),
+		Scarf:    bitToTrait((mask >> 2) & 1),
+		Umbrella: bitToTrait((mask >> 3) & 1),
+		Bag:      bitToTrait((mask >> 4) & 1),
+		Boots:    bitToTrait((mask >> 5) & 1),
+		Gloves:   bitToTrait((mask >> 6) & 1),
+		Watch:    bitToTrait((mask >> 7) & 1),
+		Book:     bitToTrait((mask >> 8) & 1),
+		Key:      bitToTrait((mask >> 9) & 1),
+		Camera:   bitToTrait((mask >> 10) & 1),
+		Badge:    bitToTrait((mask >> 11) & 1),
+	}
 }
 
 func allSuspectTraitCombos() []SuspectTraits {
@@ -219,15 +249,24 @@ func shuffleSuspectTraits(items []SuspectTraits, rng RNG) {
 	}
 }
 
+var allClueTraits = []ClueTrait{
+	ClueTraitGlasses,
+	ClueTraitHat,
+	ClueTraitScarf,
+	ClueTraitUmbrella,
+	ClueTraitBag,
+	ClueTraitBoots,
+	ClueTraitGloves,
+	ClueTraitWatch,
+	ClueTraitBook,
+	ClueTraitKey,
+	ClueTraitCamera,
+	ClueTraitBadge,
+}
+
 func newDefaultClues(rng RNG) []ClueToken {
-	traits := []ClueTrait{
-		ClueTraitGlasses, ClueTraitGlasses,
-		ClueTraitHat, ClueTraitHat,
-		ClueTraitScarf, ClueTraitScarf,
-		ClueTraitUmbrella, ClueTraitUmbrella,
-		ClueTraitBag, ClueTraitBag,
-		ClueTraitBoots, ClueTraitBoots,
-	}
+	traits := make([]ClueTrait, len(allClueTraits))
+	copy(traits, allClueTraits)
 
 	shuffleClueTraits(traits, rng)
 
@@ -272,6 +311,18 @@ func traitValueForClue(culprit SuspectCard, trait ClueTrait) TraitValue {
 		return culprit.Traits.Bag
 	case ClueTraitBoots:
 		return culprit.Traits.Boots
+	case ClueTraitGloves:
+		return culprit.Traits.Gloves
+	case ClueTraitWatch:
+		return culprit.Traits.Watch
+	case ClueTraitBook:
+		return culprit.Traits.Book
+	case ClueTraitKey:
+		return culprit.Traits.Key
+	case ClueTraitCamera:
+		return culprit.Traits.Camera
+	case ClueTraitBadge:
+		return culprit.Traits.Badge
 	default:
 		return TraitUnknown
 	}

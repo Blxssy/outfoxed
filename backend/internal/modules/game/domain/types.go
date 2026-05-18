@@ -67,6 +67,12 @@ const (
 	ClueTraitUmbrella ClueTrait = "umbrella"
 	ClueTraitBag      ClueTrait = "bag"
 	ClueTraitBoots    ClueTrait = "boots"
+	ClueTraitGloves   ClueTrait = "gloves"
+	ClueTraitWatch    ClueTrait = "watch"
+	ClueTraitBook     ClueTrait = "book"
+	ClueTraitKey      ClueTrait = "key"
+	ClueTraitCamera   ClueTrait = "camera"
+	ClueTraitBadge    ClueTrait = "badge"
 )
 
 type TraitValue string
@@ -78,3 +84,8 @@ const (
 )
 
 type SuspectCode string
+
+const (
+	FoxEscapeAt       = 13
+	FoxStepPerFailure = 1
+)

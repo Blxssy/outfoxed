@@ -170,11 +170,11 @@ func applyFinishRoll(s GameState, c FinishRollCommand) (GameState, []Event, erro
 		s.TurnState.Pending = PendingNone
 		s.TurnState.Move = nil
 
-		s.Fox.Track += 3
+		s.Fox.Track += FoxStepPerFailure
 		events = append(events, Event{
 			Type: EvFoxMoved,
 			Data: map[string]any{
-				"by":    3,
+				"by":    FoxStepPerFailure,
 				"track": s.Fox.Track,
 			},
 		})

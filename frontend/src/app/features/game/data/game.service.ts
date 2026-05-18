@@ -62,7 +62,11 @@ export class GameService implements OnDestroy {
         const token = this.tokenService.getAccessToken() ?? '';
         this.reset();
         this.subscribeToMessages();
-        this.ws.connect(`${WS_BASE}/ws/games/${gameId}?token=${token}`);
+
+        const wsBase = WebSocketService.resolveWsBase();
+        this.ws.connect(
+            `${wsBase}/ws/games/${gameId}?token=${encodeURIComponent(token)}`,
+        );
     }
 
     endSession(): void {

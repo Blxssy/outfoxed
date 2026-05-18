@@ -69,7 +69,7 @@ func (r *Repo) CreateGame(
 		joinCodeValue,
 		stateJSON,
 		1,
-		15,
+		13,
 		createdBy,
 	).Scan(
 		&row.ID,
