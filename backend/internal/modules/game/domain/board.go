@@ -6,7 +6,7 @@ const (
 	BoardWidth  = 16
 	BoardHeight = 16
 	BoardSize   = BoardWidth * BoardHeight
-	ClueCount   = 12
+	ClueCount   = 6
 )
 
 type BoardCellType string

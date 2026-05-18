@@ -17,16 +17,11 @@ type SuspectTraits struct {
 	Umbrella TraitValue `json:"umbrella"`
 	Bag      TraitValue `json:"bag"`
 	Boots    TraitValue `json:"boots"`
-	Gloves   TraitValue `json:"gloves"`
-	Watch    TraitValue `json:"watch"`
-	Book     TraitValue `json:"book"`
-	Key      TraitValue `json:"key"`
-	Camera   TraitValue `json:"camera"`
-	Badge    TraitValue `json:"badge"`
 }
 
 type SuspectCardView struct {
 	ID       string         `json:"id"`
+	Name     string         `json:"name"`
 	Revealed bool           `json:"revealed"`
 	Excluded bool           `json:"excluded"`
 	Traits   *SuspectTraits `json:"traits,omitempty"`

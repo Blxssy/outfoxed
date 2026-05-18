@@ -96,6 +96,7 @@ func BuildGameView(st GameState, userID PlayerID) GameView {
 	for _, s := range st.Suspects {
 		item := SuspectCardView{
 			ID:       s.ID,
+			Name:     string(s.Code),
 			Revealed: s.Revealed,
 			Excluded: s.Excluded,
 		}
