@@ -365,7 +365,19 @@ func applyTakeClue(s GameState, c TakeClueCommand) (GameState, []Event, error) {
 		return s, nil, ErrNoPendingAction
 	}
 	if clue.Revealed {
-		return s, nil, ErrAllCluesCollected
+		s.TurnState.Pending = PendingNone
+		s.TurnState.Move = nil
+		s.Phase = PhaseEndTurn
+		s.Version++
+
+		return s, []Event{
+			{
+				Type: "clue_already_taken",
+				Data: map[string]any{
+					"clueId": clue.ID,
+				},
+			},
+		}, nil
 	}
 
 	result, ok := s.Secret.ClueTruth[clue.ID]
