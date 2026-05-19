@@ -9,6 +9,7 @@ import { GameService } from './data/game.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GoalType } from './data/game.types';
 import { CluesListComponent } from './clues-list/clues-list.component';
+import { FinishModalComponent } from './finish-modal/finish-modal.component';
 
 @Component({
     selector: 'app-game',
@@ -20,6 +21,7 @@ import { CluesListComponent } from './clues-list/clues-list.component';
         InvestigationLogComponent,
         DiceRollComponent,
         CluesListComponent,
+        FinishModalComponent,
     ],
     templateUrl: './game.component.html',
     styleUrl: './game.component.scss',
@@ -52,6 +54,15 @@ export class GameComponent {
                 this.game.canDo('end_turn')
             ) {
                 this.game.endTurn();
+            }
+        });
+        effect(() => {
+            if (
+                this.game.phase() === 'resolve_clue' &&
+                this.game.canDo('take_clue') &&
+                !this.game.hasPending()
+            ) {
+                this.game.takeClue();
             }
         });
     }
@@ -132,6 +143,12 @@ export class GameComponent {
         this.clues().filter((c) => c.revealed),
     );
     readonly totalCluesCount = computed(() => this.clues().length);
+    readonly collectedClueIndices = computed(() =>
+        this.clues()
+            .filter((c) => c.revealed)
+            .map((c) => c.boardCell)
+            .filter((idx): idx is number => idx !== undefined),
+    );
 
     stepsOptions(): number[] {
         return [1, 2, 3];

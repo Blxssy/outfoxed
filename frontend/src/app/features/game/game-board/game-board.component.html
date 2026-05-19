@@ -6,10 +6,20 @@
                     @for (cell of row; track cell.index) {
                         <div
                             class="cell"
-                            [class.cell--clue]="cell.hasClue"
+                            [class.cell--clue]="hasActiveClue(cell)"
+                            [class.cell--clue-collected]="isCollected(cell)"
                             [class.cell--reachable]="isReachable(cell.index)"
                             (click)="onCellClick(cell)"
                         >
+                            @if (hasActiveClue(cell)) {
+                                <span class="clue-icon">🔍</span>
+                            }
+                            @if (isCollected(cell)) {
+                                <span class="clue-icon clue-icon--collected"
+                                    >✓</span
+                                >
+                            }
+
                             @for (
                                 entry of playersAt(cell.index);
                                 track entry.player.userId;

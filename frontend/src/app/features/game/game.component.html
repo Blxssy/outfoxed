@@ -1,4 +1,3 @@
-<button (click)="leaveGame()"></button>
 <div class="top-bar">
     <app-player-cards
         [players]="players()"
@@ -20,13 +19,9 @@
             [mySeat]="state()?.me?.seat"
             [reachableCells]="reachableCells()"
             [canMove]="canMovePawn()"
+            [collectedClueIndices]="collectedClueIndices()"
             (cellClicked)="onCellClicked($event)"
         />
-        @if (canTakeClue()) {
-            <button [disabled]="hasPending()" (click)="takeClue()">
-                Взять улику
-            </button>
-        }
     </div>
 
     <div class="right-col">
@@ -48,8 +43,24 @@
             [totalCount]="totalCluesCount()"
         />
 
-        <app-suspects [suspects]="suspects()"></app-suspects>
+        <app-suspects
+            [suspects]="suspects()"
+            [canReveal]="canRevealSuspects()"
+            [canAccuse]="canAccuse()"
+            [selectedIds]="selectedSuspects()"
+            [disabled]="hasPending()"
+            (suspectToggled)="toggleSuspect($event)"
+            (revealConfirmed)="confirmReveal()"
+            (accused)="accuse($event)"
+        />
 
         <app-investigation-log></app-investigation-log>
     </div>
 </div>
+
+@if (isFinished()) {
+    <app-finish-modal
+        [result]="gameResult()"
+        (lobbyClicked)="leaveGame()"
+    ></app-finish-modal>
+}

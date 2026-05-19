@@ -1,6 +1,5 @@
 :host {
     display: block;
-    font-family: "Nunito", cursive, sans-serif;
 }
 
 .panel {
@@ -39,7 +38,14 @@
     color: #b07040;
     font-weight: 600;
     font-style: italic;
-    padding: 6px 16px 10px;
+    padding: 6px 16px 8px;
+
+    &--reveal {
+        color: #8a6000;
+        background: rgba(255, 220, 100, 0.2);
+        border-radius: 8px;
+        margin: 0 10px;
+    }
 }
 
 .panel-body {
@@ -55,14 +61,13 @@
 
 .suspects-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    padding: 2px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 8px 2px 2px;
 }
 
 .suspect-card {
-    aspect-ratio: 1;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 2px dashed rgba(180, 130, 60, 0.4);
     background: rgba(255, 248, 232, 0.75);
     display: flex;
@@ -70,47 +75,51 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    cursor: pointer;
+    padding: 10px 8px;
+    cursor: default;
     transition:
         background 0.15s,
         border-color 0.15s,
         transform 0.12s,
         box-shadow 0.15s;
     position: relative;
-}
+    min-height: 80px;
 
-.suspect-card:hover {
-    background: rgba(255, 245, 215, 0.98);
-    border-color: rgba(200, 150, 60, 0.7);
-    transform: scale(1.05);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-    z-index: 2;
-}
+    &--selectable {
+        cursor: pointer;
 
-.suspect-card.revealed {
-    background: rgba(228, 248, 228, 0.9);
-    border: 2px solid rgba(80, 180, 80, 0.5);
-}
+        &:hover {
+            background: rgba(255, 240, 180, 0.95);
+            border-color: rgba(220, 160, 20, 0.8);
+            transform: scale(1.02);
+        }
+    }
 
-.suspect-card.innocent {
-    background: rgba(220, 218, 215, 0.6);
-    border: 2px solid rgba(160, 155, 145, 0.4);
-    opacity: 0.65;
+    &--selected {
+        background: rgba(255, 220, 100, 0.9) !important;
+        border: 2px solid rgba(220, 160, 20, 0.9) !important;
+        box-shadow: 0 0 0 3px rgba(220, 160, 20, 0.3);
+    }
+
+    &--revealed {
+        background: rgba(228, 248, 228, 0.9);
+        border: 2px solid rgba(80, 180, 80, 0.5);
+        cursor: default;
+    }
+
+    &--excluded {
+        background: rgba(210, 208, 204, 0.55);
+        border: 2px solid rgba(160, 155, 145, 0.35);
+        opacity: 0.75;
+        cursor: default;
+    }
 }
 
 .suspect-q {
-    font-size: 26px;
+    font-size: 24px;
     color: #e04020;
     font-weight: 900;
     line-height: 1;
-}
-
-.suspect-icon {
-    font-size: 22px;
-    line-height: 1;
-}
-.suspect-icon.muted {
-    opacity: 0.5;
 }
 
 .suspect-label {
@@ -118,10 +127,135 @@
     font-weight: 800;
     color: #b07040;
     text-align: center;
+
+    &--muted {
+        color: #999;
+    }
 }
-.suspect-label.muted {
-    color: #999;
+
+.suspect-excluded-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
 }
-.suspect-card.revealed .suspect-label {
+
+.suspect-excluded-icon {
+    font-size: 22px;
+    opacity: 0.6;
+}
+
+.suspect-revealed-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+
+.suspect-name {
+    font-size: 11px;
+    font-weight: 900;
     color: #3a8040;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.traits-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+}
+
+.trait-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(80, 180, 80, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border: 1px solid rgba(80, 180, 80, 0.3);
+}
+
+.card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    margin-top: 2px;
+}
+
+.card-btn {
+    width: 100%;
+    padding: 5px 8px;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+        opacity 0.15s,
+        transform 0.1s;
+    line-height: 1;
+
+    &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    &:not(:disabled):hover {
+        opacity: 0.85;
+        transform: scale(1.02);
+    }
+
+    &--exclude {
+        background: rgba(0, 0, 0, 0.07);
+        color: #666;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    &--accuse {
+        background: linear-gradient(135deg, #e06020, #b03010);
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    &--reinstate {
+        background: rgba(80, 120, 200, 0.12);
+        color: #3050a0;
+        border: 1px solid rgba(80, 120, 200, 0.3);
+        font-size: 9px;
+    }
+}
+
+.action-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: none;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    &:not(:disabled):hover {
+        opacity: 0.85;
+    }
+
+    &--reveal {
+        background: linear-gradient(135deg, #d4a020, #b07010);
+        color: #fff;
+    }
 }

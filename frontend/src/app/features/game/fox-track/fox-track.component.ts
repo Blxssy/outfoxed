@@ -15,6 +15,6 @@ export class FoxTrackComponent {
     foxPosition = computed(() => this.foxTrack() + 1);
 
     get steps(): number[] {
-        return Array.from({ length: this.finishStep() - 1 }, (_, i) => i + 2);
+        return Array.from({ length: this.finishStep() - 2 }, (_, i) => i + 2);
     }
 }

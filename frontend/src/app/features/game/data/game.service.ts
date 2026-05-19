@@ -21,7 +21,6 @@ import {
 import { TokenService } from 'src/app/services/auth/token.service';
 
 const MAX_EVENT_LOG = 100;
-const WS_BASE = 'ws://localhost:8080';
 
 @Injectable({ providedIn: 'root' })
 export class GameService implements OnDestroy {

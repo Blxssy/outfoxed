@@ -1,35 +1,114 @@
 <div class="panel">
     <div class="panel-header">
         <span class="panel-title">Подозреваемые</span>
-        <span class="panel-subtitle"
-            >{{ revealedCount }} / {{ suspects().length }} открыто</span
-        >
+        <span class="panel-subtitle">
+            {{ revealedCount() }} / {{ suspects().length }} открыто
+        </span>
     </div>
-    <div class="panel-hint">
-        Сравнивайте вещи подозреваемых с найденными уликами. Исключайте
-        невиновных!
-    </div>
+
+    @if (canReveal()) {
+        <div class="panel-hint panel-hint--reveal">
+            Выберите 2 подозреваемых для открытия ({{ selectedIds().length }}/2)
+        </div>
+    } @else {
+        <div class="panel-hint">
+            Сравнивайте улики с вещами подозреваемых. Исключайте невиновных!
+        </div>
+    }
+
     <div class="panel-body">
         <div class="suspects-scroll">
             <div class="suspects-grid">
                 @for (s of suspects(); track s.id) {
                     <div
                         class="suspect-card"
-                        [class.revealed]="s.revealed"
-                        [class.innocent]="s.excluded"
-                        [title]="!s.revealed ? s.id : 'Неизвестно'"
+                        [class.suspect-card--revealed]="
+                            s.revealed && !isExcluded(s)
+                        "
+                        [class.suspect-card--excluded]="isExcluded(s)"
+                        [class.suspect-card--selected]="isSelected(s.id)"
+                        [class.suspect-card--selectable]="
+                            canReveal() && !s.revealed && !isExcluded(s)
+                        "
+                        (click)="onCardClick(s)"
                     >
-                        @if (!s.revealed) {
+                        @if (isExcluded(s)) {
+                            <div class="suspect-excluded-content">
+                                <span class="suspect-excluded-icon">🚫</span>
+                                <span
+                                    class="suspect-label suspect-label--muted"
+                                >
+                                    Невиновен
+                                </span>
+                                <button
+                                    class="card-btn card-btn--reinstate"
+                                    [disabled]="disabled()"
+                                    (click)="reinstateSuspect(s, $event)"
+                                    title="Вернуть"
+                                >
+                                    Вернуть
+                                </button>
+                            </div>
+                        } @else if (s.revealed) {
+                            <div class="suspect-revealed-content">
+                                <span class="suspect-name">
+                                    {{ getSuspectName(s) }}
+                                </span>
+
+                                @if (s.traits) {
+                                    <div class="traits-grid">
+                                        @for (
+                                            t of getActiveTraits(s.traits);
+                                            track t.key
+                                        ) {
+                                            <span
+                                                class="trait-badge"
+                                                [title]="t.label"
+                                                >{{ t.icon }}</span
+                                            >
+                                        }
+                                    </div>
+                                }
+
+                                <div class="card-actions">
+                                    <button
+                                        class="card-btn card-btn--exclude"
+                                        [disabled]="disabled()"
+                                        (click)="excludeSuspect(s, $event)"
+                                        title="Исключить"
+                                    >
+                                        Исключить
+                                    </button>
+
+                                    @if (canAccuse()) {
+                                        <button
+                                            class="card-btn card-btn--accuse"
+                                            [disabled]="disabled()"
+                                            (click)="accuseSuspect(s, $event)"
+                                            title="Обвинить"
+                                        >
+                                            Обвинить!
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        } @else {
                             <span class="suspect-q">?</span>
                             <span class="suspect-label">Неизвестно</span>
-                        } @else if (s.revealed) {
-                            <span class="suspect-label">{{ s.id }}</span>
-                        } @else {
-                            <span class="suspect-label muted">Невиновен</span>
                         }
                     </div>
                 }
             </div>
         </div>
+
+        @if (canReveal()) {
+            <button
+                class="action-btn action-btn--reveal"
+                [disabled]="!canConfirmReveal() || disabled()"
+                (click)="revealConfirmed.emit()"
+            >
+                Открыть ({{ selectedIds().length }}/2)
+            </button>
+        }
     </div>
 </div>

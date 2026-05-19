@@ -22,6 +22,7 @@ export class GameBoardComponent {
     mySeat = input<number | undefined>(-1);
     reachableCells = input<number[]>([]);
     canMove = input(false);
+    collectedClueIndices = input<number[]>([]);
 
     cellClicked = output<number>();
 
@@ -39,8 +40,20 @@ export class GameBoardComponent {
         () => new Set(this.reachableCells()),
     );
 
+    private readonly collectedSet = computed(
+        () => new Set(this.collectedClueIndices()),
+    );
+
     isReachable(cellIndex: number): boolean {
         return this.canMove() && this.reachableSet().has(cellIndex);
+    }
+
+    hasActiveClue(cell: BoardCell): boolean {
+        return cell.hasClue && !this.collectedSet().has(cell.index);
+    }
+
+    isCollected(cell: BoardCell): boolean {
+        return cell.hasClue && this.collectedSet().has(cell.index);
     }
 
     onCellClick(cell: BoardCell): void {
