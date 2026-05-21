@@ -12,7 +12,7 @@ import { TokenService } from './token.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    private api = 'http://localhost:8080/api/v1/auth';
+    private api = '/api/v1/auth';
 
     private userSubject = new BehaviorSubject<User | null>(null);
     user$ = this.userSubject.asObservable();

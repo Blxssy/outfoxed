@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 type GameRow struct {
@@ -14,9 +15,10 @@ type GameRow struct {
 	CulpritID   int
 	CreatedBy   sql.NullString
 
-	Title      string
-	Visibility string
-	JoinCode   sql.NullString
+	Title          string
+	Visibility     string
+	JoinCode       sql.NullString
+	TurnDeadlineAt sql.NullTime
 }
 
 type GamePlayerRow struct {
@@ -76,4 +78,6 @@ type GameRepo interface {
 	RemovePlayer(ctx context.Context, tx *sql.Tx, gameID string, userID string) error
 	SetGameCreator(ctx context.Context, tx *sql.Tx, gameID string, userID string) error
 	DeleteGame(ctx context.Context, tx *sql.Tx, gameID string) error
+	UpdateStateAndDeadline(ctx context.Context, tx *sql.Tx, gameID string, status string, newStateJSON []byte, newVersion int, deadline *time.Time) error
+	ListDueGamesForTimeout(ctx context.Context, limit int) ([]GameRow, error)
 }

@@ -1,0 +1,18 @@
+<div class="players-row">
+    @for (player of players(); track player.userId) {
+        <div
+            class="player-card"
+            [class.active]="player.seat === currentPlayerSeat()"
+            [class.inactive]="player.seat !== currentPlayerSeat()"
+            [class.player-0]="player.seat === 0"
+            [class.player-1]="player.seat === 1"
+            [class.player-2]="player.seat === 2"
+            [class.player-3]="player.seat === 3"
+        >
+            @if (player.seat === currentPlayerSeat()) {
+                <div class="turn-badge">ХОД</div>
+            }
+            <div class="player-name">{{ player.name }}</div>
+        </div>
+    }
+</div>

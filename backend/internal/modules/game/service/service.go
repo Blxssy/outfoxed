@@ -5,20 +5,30 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"fox/internal/modules/game/domain"
 	"fox/internal/modules/game/repo"
+
+	"github.com/rs/zerolog"
 )
+
+type RealtimeNotifier interface {
+	PublishLobby(gameID string)
+	PublishGame(gameID string, state domain.GameState, events []domain.Event)
+}
 
 type RNGFactory func() domain.RNG
 
 type Service struct {
-	repo repo.GameRepo
-	rng  RNGFactory
+	repo     repo.GameRepo
+	log      zerolog.Logger
+	rng      RNGFactory
+	notifier RealtimeNotifier
 }
 
-func New(r repo.GameRepo, rng RNGFactory) *Service {
-	return &Service{repo: r, rng: rng}
+func New(log zerolog.Logger, r repo.GameRepo, rng RNGFactory, notifier RealtimeNotifier) *Service {
+	return &Service{repo: r, rng: rng, log: log, notifier: notifier}
 }
 
 // ApplyCommand — главная операция: применить команду игрока к игре атомарно.
@@ -66,7 +76,15 @@ func (s *Service) ApplyCommand(ctx context.Context, gameID string, userID string
 	}
 
 	// Сохраняем новый state + версию
-	if err = s.repo.UpdateState(ctx, tx, gameID, string(newState.Status), stateJSON, newState.Version); err != nil {
+	if err = s.repo.UpdateStateAndDeadline(
+		ctx,
+		tx,
+		gameID,
+		string(newState.Status),
+		stateJSON,
+		newState.Version,
+		newState.TurnDeadlineAt,
+	); err != nil {
 		return domain.GameState{}, nil, fmt.Errorf("update state: %w", err)
 	}
 
@@ -109,4 +127,104 @@ func (s *Service) GetView(ctx context.Context, gameID string, userID string) (do
 	}
 
 	return domain.BuildGameView(st, domain.PlayerID(userID)), nil
+}
+
+func (s *Service) ProcessTimedOutTurns(ctx context.Context) error {
+	rows, err := s.repo.ListDueGamesForTimeout(ctx, 50)
+	if err != nil {
+		return fmt.Errorf("list due games: %w", err)
+	}
+
+	for _, row := range rows {
+		if err := s.processOneTimedOutGame(ctx, row.ID); err != nil {
+			s.log.Info().Msgf("s.processOneTimedOutGame: %v", err)
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) processOneTimedOutGame(ctx context.Context, gameID string) error {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
+	if err != nil {
+		return err
+	}
+
+	var st domain.GameState
+	if err := json.Unmarshal(row.StateJSON, &st); err != nil {
+		return err
+	}
+
+	if st.Status != domain.StatusActive || st.TurnDeadlineAt == nil {
+		return nil
+	}
+	if time.Now().UTC().Before(*st.TurnDeadlineAt) {
+		return nil
+	}
+
+	originalSeat := st.ActiveSeat
+	rng := s.rng()
+	events := make([]domain.Event, 0)
+
+	events = append(events, domain.Event{
+		Type: "turn_timed_out",
+		Data: map[string]any{
+			"seat": originalSeat,
+		},
+	})
+
+	for i := 0; i < 10; i++ {
+		cmd, ok := domain.BuildAutoCommand(st, rng)
+		if !ok {
+			break
+		}
+
+		nextState, evs, err := domain.Apply(st, cmd, rng)
+		if err != nil {
+			return err
+		}
+
+		st = nextState
+		events = append(events, evs...)
+
+		if st.Status == domain.StatusFinished || st.ActiveSeat != originalSeat {
+			break
+		}
+	}
+
+	stateJSON, err := json.Marshal(st)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.UpdateStateAndDeadline(
+		ctx,
+		tx,
+		gameID,
+		string(st.Status),
+		stateJSON,
+		st.Version,
+		st.TurnDeadlineAt,
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	if s.notifier != nil {
+		s.notifier.PublishGame(gameID, st, events)
+	}
+
+	return nil
 }

@@ -1,0 +1,61 @@
+<div class="board-wrapper">
+    <div class="board-frame">
+        <div class="board-container">
+            <div class="grid">
+                @for (row of rows(); track $index) {
+                    @for (cell of row; track cell.index) {
+                        <div
+                            class="cell"
+                            [class.cell--clue]="hasActiveClue(cell)"
+                            [class.cell--clue-collected]="isCollected(cell)"
+                            [class.cell--reachable]="isReachable(cell.index)"
+                            (click)="onCellClick(cell)"
+                        >
+                            @if (hasActiveClue(cell)) {
+                                <span class="clue-icon">🔍</span>
+                            }
+                            @if (isCollected(cell)) {
+                                <span class="clue-icon clue-icon--collected"
+                                    >✓</span
+                                >
+                            }
+
+                            @for (
+                                entry of playersAt(cell.index);
+                                track entry.player.userId;
+                                let i = $index
+                            ) {
+                                <div
+                                    class="token"
+                                    [class]="seatClass(entry.player.seat)"
+                                    [class.token--active]="
+                                        isActivePlayer(entry.player)
+                                    "
+                                    [class.token--me]="isMe(entry.player)"
+                                    [class.token--offset-0]="
+                                        entry.total > 1 && i === 0
+                                    "
+                                    [class.token--offset-1]="
+                                        entry.total > 1 && i === 1
+                                    "
+                                    [class.token--offset-2]="
+                                        entry.total > 1 && i === 2
+                                    "
+                                    [class.token--offset-3]="
+                                        entry.total > 1 && i === 3
+                                    "
+                                    [attr.title]="entry.player.name"
+                                >
+                                    {{ entry.player.name[0] }}
+                                    @if (isActivePlayer(entry.player)) {
+                                        <div class="token__ring"></div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>

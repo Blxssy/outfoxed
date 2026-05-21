@@ -1,0 +1,36 @@
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-title">Найденные улики</span>
+        <span class="panel-badge">
+            {{ clues().length }} / {{ totalCount() }}
+        </span>
+    </div>
+
+    <div class="panel-body">
+        @if (clues().length === 0) {
+            <p class="clues-empty">Улики ещё не собраны</p>
+        } @else {
+            <div class="clues-grid">
+                @for (clue of clues(); track clue.id) {
+                    <div
+                        class="clue-card"
+                        [class.clue-card--yes]="clue.result === 'yes'"
+                        [class.clue-card--no]="clue.result === 'no'"
+                    >
+                        <span class="clue-card__icon">{{
+                            resultIcon(clue.result)
+                        }}</span>
+                        <div class="clue-card__info">
+                            <span class="clue-card__trait">{{
+                                traitLabel(clue.trait)
+                            }}</span>
+                            <span class="clue-card__result">{{
+                                resultLabel(clue.result)
+                            }}</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

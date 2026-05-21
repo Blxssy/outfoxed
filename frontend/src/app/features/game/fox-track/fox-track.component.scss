@@ -1,0 +1,119 @@
+:host {
+    display: block;
+}
+
+.fox-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.title-text {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #fff;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.track-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.track-connector {
+    width: 3px;
+    height: 6px;
+    background: rgba(180, 120, 60, 0.5);
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.track-cell {
+    width: 30px;
+    height: 30px;
+    border-radius: 12px;
+    border: 2px solid rgba(200, 150, 80, 0.5);
+    background: rgba(255, 245, 225, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition:
+        background 0.25s,
+        border-color 0.25s,
+        transform 0.2s,
+        box-shadow 0.25s;
+    flex-shrink: 0;
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.12),
+        inset 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+
+.track-cell.passed {
+    background: rgba(230, 215, 190, 0.55);
+    border-color: rgba(200, 160, 100, 0.3);
+    box-shadow: none;
+}
+
+.track-cell.fox-here {
+    background: linear-gradient(135deg, #f04020, #c02010);
+    border-color: #e03010;
+    box-shadow:
+        0 0 0 3px rgba(240, 80, 30, 0.25),
+        0 3px 12px rgba(200, 40, 10, 0.4),
+        inset 0 1px 2px rgba(255, 160, 100, 0.3);
+    transform: scale(1.08);
+    z-index: 2;
+}
+
+.start-cell {
+    width: 36px;
+    height: 36px;
+    border-radius: 14px;
+    border-color: rgba(200, 150, 80, 0.6);
+}
+
+.start-cell.fox-here {
+    transform: scale(1.1);
+}
+
+.burrow-cell {
+    width: 36px;
+    height: 36px;
+    border-radius: 14px;
+    background: rgba(80, 50, 20, 0.18);
+    border-color: rgba(120, 80, 30, 0.45);
+}
+.burrow-cell.fox-here {
+    background: linear-gradient(135deg, #f04020, #c02010);
+}
+
+.step-num {
+    font-size: 14px;
+    font-weight: 800;
+    color: #9a6020;
+    line-height: 1;
+    pointer-events: none;
+}
+.start-num {
+    font-size: 15px;
+    color: #7a4810;
+}
+
+.fox-icon {
+    font-size: 22px;
+    line-height: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+.burrow-icon {
+    font-size: 20px;
+    line-height: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}

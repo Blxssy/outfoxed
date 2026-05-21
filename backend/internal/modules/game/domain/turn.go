@@ -14,14 +14,17 @@ type TurnGoal struct {
 }
 
 type RollState struct {
-	Attempts int      `json:"attempts"`
-	Faces    []string `json:"faces"`
-	Success  bool     `json:"success"`
+	RollsUsed int      `json:"rollsUsed"`
+	MaxRolls  int      `json:"maxRolls"`
+	Faces     []string `json:"faces"`
+	Kept      []bool   `json:"kept"`
+	Success   bool     `json:"success"`
 }
 
 type MoveState struct {
-	StepsTotal     int `json:"stepsTotal"`
-	StepsRemaining int `json:"stepsRemaining"`
+	StepsTotal     int   `json:"stepsTotal"`
+	StepsRemaining int   `json:"stepsRemaining"`
+	ReachableCells []int `json:"reachableCells,omitempty"`
 }
 
 func NewTurnState() TurnState {

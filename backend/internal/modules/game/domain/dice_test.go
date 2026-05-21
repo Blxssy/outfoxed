@@ -4,32 +4,35 @@ import (
 	"testing"
 )
 
-func TestRollForGoal_SuccessWithin3(t *testing.T) {
-	// Хотим clue => footprint.
-	// Intn(2): 0=footprint, 1=eye
-	// Сценарий: три нуля подряд => успех за 1 попытку
-	rng := &FixedRNG{Values: []int{0, 0, 0}}
+func TestApplyChooseGoal_StartsFirstRoll(t *testing.T) {
+	rng := &FixedRNG{Values: []int{0, 1, 0}}
 
-	res := RollForGoal(GoalClue, rng)
-	if !res.Success {
-		t.Fatalf("expected success")
-	}
-	if res.Attempts != 1 {
-		t.Fatalf("expected attempts=1, got %d", res.Attempts)
-	}
-}
+	state := NewActiveGameState("g1", []SetupPlayer{
+		{UserID: "u1", Name: "A", Seat: 0},
+		{UserID: "u2", Name: "B", Seat: 1},
+	}, rng)
 
-func TestRollForGoal_FailAfter3(t *testing.T) {
-	// Хотим suspects => eye (1)
-	// Дадим значения так, чтобы за 3 попытки не собрать 3 глаза:
-	// всего будет много следов
-	rng := &FixedRNG{Values: []int{0, 0, 0, 0, 0, 0, 0, 0, 0}}
-
-	res := RollForGoal(GoalSuspect, rng)
-	if res.Success {
-		t.Fatalf("expected failure")
+	newState, events, err := Apply(state, ChooseGoalCommand{
+		Player: "u1",
+		Goal:   GoalClue,
+	}, rng)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if res.Attempts != 3 {
-		t.Fatalf("expected attempts=3, got %d", res.Attempts)
+
+	if newState.Phase != PhaseRolling {
+		t.Fatalf("expected phase %s, got %s", PhaseRolling, newState.Phase)
+	}
+
+	if newState.TurnState.Roll == nil {
+		t.Fatal("expected roll state")
+	}
+
+	if newState.TurnState.Roll.RollsUsed != 1 {
+		t.Fatalf("expected first roll used = 1, got %d", newState.TurnState.Roll.RollsUsed)
+	}
+
+	if len(events) < 2 {
+		t.Fatalf("expected goal+rolled events")
 	}
 }

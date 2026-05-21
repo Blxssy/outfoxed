@@ -1,0 +1,17 @@
+:80 {
+    encode gzip zstd
+
+    handle /api/* {
+                      reverse_proxy game:8080
+                  }
+
+    handle /ws/* {
+                     reverse_proxy game:8080
+                 }
+
+    handle {
+               root * /srv/frontend
+               try_files {path} /index.html
+               file_server
+           }
+}
