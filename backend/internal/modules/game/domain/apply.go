@@ -509,7 +509,7 @@ func applyEndTurn(s GameState, c EndTurnCommand) (GameState, []Event, error) {
 	s.Turn++
 	s.Phase = PhaseChooseGoal
 
-	deadline := time.Now().UTC().Add(5 * time.Minute)
+	deadline := time.Now().UTC().Add(2 * time.Minute)
 	s.TurnDeadlineAt = &deadline
 
 	s.Version++

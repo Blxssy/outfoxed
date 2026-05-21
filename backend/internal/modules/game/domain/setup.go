@@ -66,7 +66,7 @@ func NewActiveGameState(gameID string, players []SetupPlayer, rng RNG) GameState
 		ClueTruth:        buildClueTruth(culprit, state.Clues),
 	}
 
-	deadline := time.Now().UTC().Add(5 * time.Minute)
+	deadline := time.Now().UTC().Add(2 * time.Minute)
 	state.TurnDeadlineAt = &deadline
 
 	return state
