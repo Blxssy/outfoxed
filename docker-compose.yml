@@ -18,7 +18,7 @@ services:
       - .env
 
   game:
-    image: ${DOCKERHUB_NAMESPACE}/game:sha-bb1914f
+    image: ${DOCKERHUB_NAMESPACE}/game:latest
     container_name: game_backend
     command: ["./main"]
     restart: unless-stopped
@@ -29,7 +29,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: ${DOCKERHUB_NAMESPACE}/frontend:sha-bb1914f
+    image: ${DOCKERHUB_NAMESPACE}/frontend:latest
     restart: unless-stopped
     ports:
       - "80:80"
