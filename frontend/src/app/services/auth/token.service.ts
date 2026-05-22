@@ -3,6 +3,8 @@ import { Injectable } from '@angular/core';
 const ACCESS_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
 
+const EXPIRY_BUFFER_SEC = 30;
+
 @Injectable({ providedIn: 'root' })
 export class TokenService {
     getAccessToken(): string | null {
@@ -24,6 +26,33 @@ export class TokenService {
     }
 
     isLoggedIn(): boolean {
-        return !!this.getAccessToken();
+        return !!this.getAccessToken() && !this.isAccessTokenExpired();
+    }
+
+    isAccessTokenExpired(): boolean {
+        const token = this.getAccessToken();
+
+        if (!token) {
+            return true;
+        }
+
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+
+            return Date.now() >= payload.exp * 1000 - EXPIRY_BUFFER_SEC * 1000;
+        } catch {
+            return true;
+        }
+    }
+
+    msUntilExpiry(): number {
+        const token = this.getAccessToken();
+        if (!token) return 0;
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return Math.max(0, payload.exp * 1000 - Date.now());
+        } catch {
+            return 0;
+        }
     }
 }
