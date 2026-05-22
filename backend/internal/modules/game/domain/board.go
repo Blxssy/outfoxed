@@ -47,8 +47,8 @@ type BoardCellView struct {
 }
 
 func NewBoard16x16(clueIDs []string, rng RNG) (BoardState, error) {
-	if len(clueIDs) != ClueCount {
-		return BoardState{}, fmt.Errorf("expected %d clue ids, got %d", ClueCount, len(clueIDs))
+	if len(clueIDs) == 0 {
+		return BoardState{}, fmt.Errorf("expected at least 1 clue id, got 0")
 	}
 
 	board := BoardState{
@@ -87,33 +87,274 @@ func NewBoard16x16(clueIDs []string, rng RNG) (BoardState, error) {
 	return board, nil
 }
 
+type quadrant int
+
+const (
+	qTopLeft quadrant = iota
+	qTopRight
+	qBottomLeft
+	qBottomRight
+)
+
+type clueRing int
+
+const (
+	ringNear clueRing = iota // 2..3
+	ringMid                  // 4..5
+	ringFar                  // 6..7
+)
+
+type clueSlot struct {
+	ring clueRing
+	quad quadrant
+}
+
 func placeCluesRandomly(board *BoardState, clueIDs []string, rng RNG) error {
+	if len(clueIDs) != 6 {
+		return fmt.Errorf("expected 6 clue ids, got %d", len(clueIDs))
+	}
+
 	forbidden := make(map[int]struct{}, len(CenterStartZoneIndexes()))
 	for _, idx := range CenterStartZoneIndexes() {
 		forbidden[idx] = struct{}{}
 	}
 
-	available := make([]int, 0, len(board.Cells))
+	buckets := map[clueRing]map[quadrant][]int{
+		ringNear: {
+			qTopLeft:     {},
+			qTopRight:    {},
+			qBottomLeft:  {},
+			qBottomRight: {},
+		},
+		ringMid: {
+			qTopLeft:     {},
+			qTopRight:    {},
+			qBottomLeft:  {},
+			qBottomRight: {},
+		},
+		ringFar: {
+			qTopLeft:     {},
+			qTopRight:    {},
+			qBottomLeft:  {},
+			qBottomRight: {},
+		},
+	}
+
 	for _, cell := range board.Cells {
 		if _, bad := forbidden[cell.Index]; bad {
 			continue
 		}
-		available = append(available, cell.Index)
+
+		dist := distanceToStartZone(cell.Index)
+		q := cellQuadrant(cell.X, cell.Y)
+
+		switch {
+		case dist >= 2 && dist <= 3:
+			buckets[ringNear][q] = append(buckets[ringNear][q], cell.Index)
+		case dist >= 4 && dist <= 5:
+			buckets[ringMid][q] = append(buckets[ringMid][q], cell.Index)
+		case dist >= 6 && dist <= 7:
+			buckets[ringFar][q] = append(buckets[ringFar][q], cell.Index)
+		}
 	}
 
-	if len(available) < len(clueIDs) {
-		return fmt.Errorf("not enough cells to place clues")
+	slots, err := buildClueSlots(buckets, rng)
+	if err != nil {
+		return err
 	}
 
-	shuffleInts(available, rng)
+	picked := make([]int, 0, len(clueIDs))
+
+	for _, slot := range slots {
+		candidates := buckets[slot.ring][slot.quad]
+		if len(candidates) == 0 {
+			return fmt.Errorf("no candidates for ring=%d quadrant=%d", slot.ring, slot.quad)
+		}
+
+		idx := pickBestCell(candidates, picked, board.Width, rng)
+		picked = append(picked, idx)
+
+		buckets[slot.ring][slot.quad] = removeCell(buckets[slot.ring][slot.quad], idx)
+	}
 
 	for i, clueID := range clueIDs {
-		idx := available[i]
+		idx := picked[i]
 		board.Cells[idx].Type = BoardCellClue
 		board.Cells[idx].ClueTokenID = clueID
 	}
 
 	return nil
+}
+
+func buildClueSlots(
+	buckets map[clueRing]map[quadrant][]int,
+	rng RNG,
+) ([]clueSlot, error) {
+	rings := []clueRing{
+		ringNear, ringNear,
+		ringMid, ringMid,
+		ringFar, ringFar,
+	}
+
+	qOrder := []quadrant{qTopLeft, qTopRight, qBottomLeft, qBottomRight}
+	shuffleQuadrants(qOrder, rng)
+
+	usedQuadrants := map[quadrant]int{
+		qTopLeft:     0,
+		qTopRight:    0,
+		qBottomLeft:  0,
+		qBottomRight: 0,
+	}
+
+	slots := make([]clueSlot, 0, len(rings))
+
+	var dfs func(pos int) bool
+	dfs = func(pos int) bool {
+		if pos == len(rings) {
+			for _, q := range qOrder {
+				if usedQuadrants[q] == 0 {
+					return false
+				}
+			}
+			return true
+		}
+
+		slotsLeft := len(rings) - pos
+		uncovered := 0
+		for _, q := range qOrder {
+			if usedQuadrants[q] == 0 {
+				uncovered++
+			}
+		}
+		if uncovered > slotsLeft {
+			return false
+		}
+
+		r := rings[pos]
+
+		// Сначала пробуем квадранты, в которых ещё нет улик
+		for pass := 0; pass < 2; pass++ {
+			for _, q := range qOrder {
+				if pass == 0 && usedQuadrants[q] > 0 {
+					continue
+				}
+				if pass == 1 && usedQuadrants[q] == 0 {
+					continue
+				}
+				if len(buckets[r][q]) == 0 {
+					continue
+				}
+
+				usedQuadrants[q]++
+				slots = append(slots, clueSlot{ring: r, quad: q})
+
+				if dfs(pos + 1) {
+					return true
+				}
+
+				slots = slots[:len(slots)-1]
+				usedQuadrants[q]--
+			}
+		}
+
+		return false
+	}
+
+	if !dfs(0) {
+		return nil, fmt.Errorf("failed to build clue slots with ring/quadrant constraints")
+	}
+
+	return slots, nil
+}
+
+func distanceToStartZone(index int) int {
+	x, y := IndexToXY(index, BoardWidth)
+
+	dx := 0
+	switch {
+	case x < 6:
+		dx = 6 - x
+	case x > 9:
+		dx = x - 9
+	}
+
+	dy := 0
+	switch {
+	case y < 6:
+		dy = 6 - y
+	case y > 9:
+		dy = y - 9
+	}
+
+	return dx + dy
+}
+
+func cellQuadrant(x, y int) quadrant {
+	left := x < BoardWidth/2
+	top := y < BoardHeight/2
+
+	switch {
+	case left && top:
+		return qTopLeft
+	case !left && top:
+		return qTopRight
+	case left && !top:
+		return qBottomLeft
+	default:
+		return qBottomRight
+	}
+}
+
+func shuffleQuadrants(items []quadrant, rng RNG) {
+	for i := len(items) - 1; i > 0; i-- {
+		j := rng.Intn(i + 1)
+		items[i], items[j] = items[j], items[i]
+	}
+}
+
+func pickBestCell(candidates []int, picked []int, width int, rng RNG) int {
+	if len(candidates) == 0 {
+		return 0
+	}
+
+	if len(picked) == 0 {
+		return candidates[rng.Intn(len(candidates))]
+	}
+
+	bestIdx := candidates[0]
+	bestScore := -1
+
+	for _, candidate := range candidates {
+		score := minDistanceToPicked(candidate, picked, width)
+		if score > bestScore {
+			bestScore = score
+			bestIdx = candidate
+		}
+	}
+
+	return bestIdx
+}
+
+func minDistanceToPicked(candidate int, picked []int, width int) int {
+	minDist := ManhattanDistance(candidate, picked[0], width)
+
+	for _, p := range picked[1:] {
+		d := ManhattanDistance(candidate, p, width)
+		if d < minDist {
+			minDist = d
+		}
+	}
+
+	return minDist
+}
+
+func removeCell(items []int, target int) []int {
+	for i, v := range items {
+		if v == target {
+			return append(items[:i], items[i+1:]...)
+		}
+	}
+	return items
 }
 
 func shuffleInts(items []int, rng RNG) {
