@@ -1,4 +1,4 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, inject, output } from '@angular/core';
 import { InputComponent } from '@fox/ui-kit/input';
 import { CardComponent } from '@fox/ui-kit/card';
 import { ButtonComponent } from '@fox/ui-kit/button';
