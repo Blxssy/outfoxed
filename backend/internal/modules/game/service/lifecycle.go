@@ -311,11 +311,6 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 		return LeaveGameResult{}, fmt.Errorf("get game for update: %w", err)
 	}
 
-	// Пока разрешаем выход только из lobby / waiting
-	if row.Status != string(domain.StatusWaiting) {
-		return LeaveGameResult{}, ErrCannotLeaveStartedGame
-	}
-
 	players, err := s.repo.GetPlayersForUpdate(ctx, tx, gameID)
 	if err != nil {
 		return LeaveGameResult{}, fmt.Errorf("get players for update: %w", err)
@@ -323,6 +318,21 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 
 	if !hasPlayer(players, userID) {
 		return LeaveGameResult{}, ErrForbidden
+	}
+
+	// Для активной игры leave = выйти с экрана, но остаться участником партии.
+	if row.Status == string(domain.StatusActive) {
+		if err := tx.Commit(); err != nil {
+			return LeaveGameResult{}, fmt.Errorf("commit: %w", err)
+		}
+
+		return LeaveGameResult{
+			GameDeleted: false,
+		}, nil
+	}
+
+	if row.Status != string(domain.StatusWaiting) {
+		return LeaveGameResult{}, ErrCannotLeaveStartedGame
 	}
 
 	isHost := row.CreatedBy.Valid && row.CreatedBy.String == userID
@@ -339,7 +349,6 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 		return LeaveGameResult{}, fmt.Errorf("get updated players: %w", err)
 	}
 
-	// Если комната опустела — удаляем её
 	if len(updatedPlayers) == 0 {
 		if err := s.repo.DeleteGame(ctx, tx, gameID); err != nil {
 			return LeaveGameResult{}, fmt.Errorf("delete empty game: %w", err)
@@ -358,7 +367,6 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 		GameDeleted: false,
 	}
 
-	// Если вышел хост — передаём лидерство игроку с минимальным seat
 	if isHost {
 		newHost := updatedPlayers[0]
 		for _, p := range updatedPlayers {
@@ -375,7 +383,6 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 		result.NewHostUsername = &newHost.Username
 	}
 
-	// Пересобираем waiting state
 	stateJSON, waitingState, err := s.buildWaitingStateJSON(gameID, updatedPlayers)
 	if err != nil {
 		return LeaveGameResult{}, err
@@ -647,4 +654,44 @@ func (s *Service) buildWaitingStateJSON(gameID string, players []repo.GamePlayer
 		return nil, domain.GameState{}, fmt.Errorf("marshal waiting state: %w", err)
 	}
 	return stateJSON, waitingState, nil
+}
+
+type MyActiveGameResult struct {
+	Found bool         `json:"found"`
+	Game  *GameSummary `json:"game,omitempty"`
+	Route string       `json:"route,omitempty"`
+}
+
+func (s *Service) GetMyActiveGame(ctx context.Context, userID string) (MyActiveGameResult, error) {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return MyActiveGameResult{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row, err := s.repo.FindUnfinishedGameForUser(ctx, tx, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return MyActiveGameResult{Found: false}, nil
+		}
+		return MyActiveGameResult{}, fmt.Errorf("find unfinished game for user: %w", err)
+	}
+
+	result := MyActiveGameResult{
+		Found: true,
+		Game: &GameSummary{
+			ID:     row.ID,
+			Status: row.Status,
+		},
+	}
+
+	if row.Status == string(domain.StatusWaiting) {
+		result.Route = "/lobby/" + row.ID
+	} else {
+		result.Route = "/game/" + row.ID
+	}
+
+	return result, nil
 }

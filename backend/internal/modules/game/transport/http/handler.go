@@ -22,6 +22,8 @@ func NewHandler(service *gameservice.Service, tokenManager *authservice.TokenMan
 	r.Use(authhttp.AuthMiddleware(tokenManager))
 
 	r.Get("/", h.GamesList)
+	r.Get("/me/active", h.GetMyActiveGame)
+
 	r.Post("/", h.CreateGame)
 	r.Post("/join-by-code", h.JoinByCode)
 	r.Get("/{id}", h.GetLobby)
@@ -31,6 +33,22 @@ func NewHandler(service *gameservice.Service, tokenManager *authservice.TokenMan
 	r.Post("/{id}/leave", h.LeaveGame)
 
 	return r
+}
+
+func (h *Handler) GetMyActiveGame(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	result, err := h.service.GetMyActiveGame(r.Context(), userID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (h *Handler) CreateGame(w http.ResponseWriter, r *http.Request) {
