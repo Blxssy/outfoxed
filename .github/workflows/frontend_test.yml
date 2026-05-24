@@ -27,3 +27,8 @@ jobs:
       run: |
         cd frontend
         npx ng lint
+    
+    - name: Run Angular tests
+      run: |
+        cd frontend
+        npx ng test --watch=false --browsers=ChromeHeadless --progress=true --verbose
