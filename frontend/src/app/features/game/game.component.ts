@@ -10,6 +10,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { GoalType } from './data/game.types';
 import { CluesListComponent } from './clues-list/clues-list.component';
 import { FinishModalComponent } from './finish-modal/finish-modal.component';
+import { GameRulesComponent } from './game-rules/game-rules.component';
 
 @Component({
     selector: 'app-game',
@@ -22,6 +23,7 @@ import { FinishModalComponent } from './finish-modal/finish-modal.component';
         DiceRollComponent,
         CluesListComponent,
         FinishModalComponent,
+        GameRulesComponent,
     ],
     templateUrl: './game.component.html',
     styleUrl: './game.component.scss',
@@ -32,8 +34,8 @@ export class GameComponent {
     private readonly router = inject(Router);
 
     readonly selectedSuspects = signal<string[]>([]);
-
     readonly isLeaving = signal(false);
+    readonly showRules = signal(false);
 
     private errorTimer: ReturnType<typeof setTimeout> | null = null;
     private gameId = '';
@@ -70,6 +72,7 @@ export class GameComponent {
     ngOnInit(): void {
         this.gameId = this.route.snapshot.paramMap.get('id') ?? '';
         if (this.gameId) this.game.startSession(this.gameId);
+        this.showRules.set(true);
     }
 
     ngOnDestroy(): void {

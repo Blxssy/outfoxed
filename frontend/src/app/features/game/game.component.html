@@ -58,6 +58,14 @@
     </div>
 </div>
 
+<button class="rules-btn" title="Правила игры" (click)="showRules.set(true)">
+    ?
+</button>
+
+@if (showRules()) {
+    <app-game-rules (closed)="showRules.set(false)" />
+}
+
 @if (isFinished()) {
     <app-finish-modal
         [result]="gameResult()"
