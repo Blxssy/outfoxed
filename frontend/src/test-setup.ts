@@ -1,17 +1,13 @@
+import 'zone.js';
+import 'zone.js/testing';
 import '@angular/compiler';
-
-import '@testing-library/jest-dom';
-
-import '@analogjs/vitest-angular/setup-zone';
-
+import { TestBed } from '@angular/core/testing';
 import {
-    BrowserTestingModule,
-    platformBrowserTesting,
-} from '@angular/platform-browser/testing';
+    BrowserDynamicTestingModule,
+    platformBrowserDynamicTesting,
+} from '@angular/platform-browser-dynamic/testing';
 
-import { getTestBed } from '@angular/core/testing';
-
-getTestBed().initTestEnvironment(
-    BrowserTestingModule,
-    platformBrowserTesting(),
+TestBed.initTestEnvironment(
+    BrowserDynamicTestingModule,
+    platformBrowserDynamicTesting(),
 );
