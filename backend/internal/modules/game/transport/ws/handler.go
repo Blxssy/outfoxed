@@ -54,6 +54,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	conn := NewConn(wsConn)
 
+	// сначала проверяем доступ
 	state, err := h.gameService.GetState(ctx, gameID, userID)
 	if err != nil {
 		h.log.Warn().
@@ -67,8 +68,43 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := h.hub.GetRoom(gameID)
 	room.Add(userID, conn)
+
+	// игрок вернулся/стал активен
+	if err := h.gameService.MarkPlayerActive(ctx, gameID, userID); err != nil {
+		h.log.Debug().
+			Err(err).
+			Str("game_id", gameID).
+			Str("user_id", userID).
+			Msg("failed to mark player active")
+	}
+
+	// перечитываем state уже после MarkPlayerActive
+	state, err = h.gameService.GetState(ctx, gameID, userID)
+	if err != nil {
+		h.log.Debug().
+			Err(err).
+			Str("game_id", gameID).
+			Str("user_id", userID).
+			Msg("failed to reload state after mark active")
+	}
+
 	defer func() {
 		room.Remove(conn)
+
+		// если это был последний сокет пользователя — помечаем его неактивным
+		if room.UserConnections(userID) == 0 {
+			bgCtx, bgCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer bgCancel()
+
+			if err := h.gameService.MarkPlayerInactive(bgCtx, gameID, userID, false); err != nil {
+				h.log.Debug().
+					Err(err).
+					Str("game_id", gameID).
+					Str("user_id", userID).
+					Msg("failed to mark player inactive")
+			}
+		}
+
 		h.broadcastPresence(gameID, userID, room)
 		conn.Close()
 		h.hub.RemoveRoomIfEmpty(gameID)
@@ -147,7 +183,9 @@ func (h *Handler) broadcastState(room *Room, state domain.GameState, reqID strin
 }
 
 func applyConnectedState(view *domain.GameView, connected map[string]bool) {
-	view.Me.Connected = connected[view.Me.UserID.String()]
+	if view.Me != nil {
+		view.Me.Connected = connected[view.Me.UserID.String()]
+	}
 
 	for i := range view.Players {
 		view.Players[i].Connected = connected[view.Players[i].UserID.String()]

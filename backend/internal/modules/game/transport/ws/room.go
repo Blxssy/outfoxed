@@ -65,3 +65,16 @@ func (r *Room) ConnectedUserIDs() map[string]bool {
 	}
 	return out
 }
+
+func (r *Room) UserConnections(userID string) int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	n := 0
+	for _, client := range r.clients {
+		if client.UserID == userID {
+			n++
+		}
+	}
+	return n
+}
