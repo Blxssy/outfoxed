@@ -504,3 +504,53 @@ func scanPlayers(rows *sql.Rows) ([]repo.GamePlayerRow, error) {
 	}
 	return players, nil
 }
+
+func (r *Repo) ListStaleWaitingGames(ctx context.Context, limit int, olderThan time.Duration) ([]repo.GameRow, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		select
+			id,
+			status,
+			state_json,
+			version,
+			fox_escape_at,
+			culprit_id,
+			created_by,
+			title,
+			visibility,
+			join_code
+		from games
+		where status = 'waiting'
+		  and created_at <= now() - ($1 * interval '1 second')
+		order by created_at asc
+		limit $2
+	`, int(olderThan.Seconds()), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]repo.GameRow, 0)
+	for rows.Next() {
+		var row repo.GameRow
+		if err := rows.Scan(
+			&row.ID,
+			&row.Status,
+			&row.StateJSON,
+			&row.Version,
+			&row.FoxEscapeAt,
+			&row.CulpritID,
+			&row.CreatedBy,
+			&row.Title,
+			&row.Visibility,
+			&row.JoinCode,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
