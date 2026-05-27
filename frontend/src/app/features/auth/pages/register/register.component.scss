@@ -39,6 +39,12 @@
     margin-top: 24px;
 }
 
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 .auth-form__extras {
     display: flex;
     align-items: center;
