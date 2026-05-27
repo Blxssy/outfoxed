@@ -1,24 +1,27 @@
 import { Routes } from '@angular/router';
+import { AuthGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  {
-    path: 'game',
-    loadComponent: () =>
-      import('./features/game/game.component').then((m) => m.GameComponent),
-  },
-  {
-    path: 'lobby',
-    loadComponent: () =>
-      import('./features/lobby/lobby.component').then((m) => m.LobbyComponent),
-  },
-  {
-    path: 'auth',
-    loadChildren: () =>
-      import('./features/auth/auth.routes').then((m) => m.routes),
-  },
-  {
-    path: '',
-    redirectTo: '/lobby',
-    pathMatch: 'full',
-  },
+    {
+        path: 'game',
+        canActivate: [AuthGuard],
+        loadChildren: () =>
+            import('./features/game/game.routes').then((m) => m.GAME_ROUTES),
+    },
+    {
+        path: 'lobby',
+        canActivate: [AuthGuard],
+        loadChildren: () =>
+            import('./features/lobby/lobby.routes').then((m) => m.LOBBY_ROUTES),
+    },
+    {
+        path: 'auth',
+        loadChildren: () =>
+            import('./features/auth/auth.routes').then((m) => m.routes),
+    },
+    {
+        path: '**',
+        redirectTo: '/auth',
+        pathMatch: 'full',
+    },
 ];

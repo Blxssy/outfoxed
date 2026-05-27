@@ -1,0 +1,131 @@
+<div class="room-layout">
+    <header class="room-header">
+        <fox-button
+            class="room-back"
+            (click)="leaveRoom()"
+            [isDisabled]="isLeaving()"
+            [text]="'← Выйти'"
+            [color]="'green'"
+        >
+        </fox-button>
+        <h1 class="room-title">{{ room()?.title }}</h1>
+    </header>
+
+    @if (room()) {
+        <main class="room-main">
+            @if (joinCode()) {
+                <fox-card [size]="'md'">
+                    <div class="room-join-code">
+                        <span class="room-join-code__label">Код комнаты:</span>
+                        <span class="room-join-code__value">{{
+                            joinCode()
+                        }}</span>
+                        <small class="room-join-code__hint">
+                            Поделитесь им с друзьями
+                        </small>
+                    </div>
+                </fox-card>
+            }
+            <section class="room-players">
+                <fox-card>
+                    <h2 class="room-players__title">
+                        Игроки ({{ room()!.players.length }} /
+                        {{ room()!.max_players }})
+                    </h2>
+
+                    <ul class="player-list">
+                        @for (player of room()!.players; track player.user_id) {
+                            <li
+                                class="player-item"
+                                [class.player-item--me]="player.is_me"
+                                [class.player-item--host]="
+                                    player.display_name ===
+                                    room()!.host_username
+                                "
+                            >
+                                <span class="player-item__seat">
+                                    {{ player.seat + 1 }}
+                                </span>
+                                <span class="player-item__name">
+                                    {{ player.display_name }}
+                                </span>
+
+                                @if (
+                                    player.display_name ===
+                                    room()!.host_username
+                                ) {
+                                    <span
+                                        class="player-item__badge player-item__badge--host"
+                                    >
+                                        Создатель
+                                    </span>
+                                }
+                                @if (player.is_me) {
+                                    <span
+                                        class="player-item__badge player-item__badge--me"
+                                    >
+                                        Вы
+                                    </span>
+                                }
+                            </li>
+                        }
+
+                        @for (
+                            slot of getEmptySlots(
+                                room()!.players.length,
+                                room()!.max_players
+                            );
+                            track slot
+                        ) {
+                            <li class="player-item player-item--empty">
+                                <span class="player-item__seat">
+                                    {{ room()!.players.length + slot }}
+                                </span>
+                                <span class="player-item__name"
+                                    >Ожидание...</span
+                                >
+                            </li>
+                        }
+                    </ul>
+                </fox-card>
+            </section>
+
+            @if (wsError()) {
+                <div class="room-error">{{ wsError()!.message }}</div>
+            }
+
+            @if (httpError()) {
+                <div class="room-error">{{ httpError()!.message }}</div>
+            }
+
+            @if (isReconnecting()) {
+                <div class="room-reconnecting">
+                    Восстановление соединения...
+                </div>
+            }
+
+            @if (canStart()) {
+                <fox-button
+                    text="Начать игру"
+                    color="green"
+                    size="lg"
+                    [fullWidth]="true"
+                    [isDisabled]="isStarting()"
+                    (click)="startGame()"
+                />
+            } @else {
+                <fox-card>
+                    <p class="room-waiting-hint">
+                        @if (isReconnecting()) {
+                            Нет соединения…
+                        } @else {
+                            Ожидаем игроков для начала игры...
+                        }
+                    </p>
+                </fox-card>
+            }
+        </main>
+    } @else {
+        <div class="room-loading">Загрузка комнаты…</div>
+    }
+</div>

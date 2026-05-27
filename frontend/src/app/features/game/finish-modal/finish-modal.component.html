@@ -1,0 +1,25 @@
+<div class="overlay">
+    <div class="modal">
+        @if (result() === "win") {
+            <div class="icon">🦊</div>
+            <h2 class="title win">Лис пойман!</h2>
+            <p class="subtitle">
+                Вы вычислили хитрого лиса и восстановили справедливость.
+                Отличная работа, детектив!
+            </p>
+        } @else {
+            <div class="icon">🌙</div>
+            <h2 class="title lose">Лис сбежал...</h2>
+            <p class="subtitle">
+                Коварный лис ускользнул под покровом ночи. Может, в следующий
+                раз повезёт больше!
+            </p>
+        }
+
+        <div class="divider"></div>
+
+        <button class="lobby-btn" (click)="lobbyClicked.emit()">
+            Вернуться в лобби
+        </button>
+    </div>
+</div>

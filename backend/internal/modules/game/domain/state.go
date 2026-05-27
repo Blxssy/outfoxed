@@ -1,11 +1,20 @@
 package domain
 
+import "time"
+
+const (
+	TurnTimeoutHuman = 2 * time.Minute
+	TurnGraceTimeout = 30 * time.Second
+	BotStepDelay     = 1 * time.Second
+)
+
 type PlayerState struct {
-	UserID    PlayerID `json:"userId"`
-	Seat      int      `json:"seat"`
-	Name      string   `json:"name"`
-	PawnCell  int      `json:"pawnCell"`
-	Connected bool     `json:"connected"`
+	UserID    PlayerID   `json:"userId"`
+	Seat      int        `json:"seat"`
+	Name      string     `json:"name"`
+	PawnCell  int        `json:"pawnCell"`
+	Connected bool       `json:"connected"`
+	BotAfter  *time.Time `json:"botAfter,omitempty"`
 }
 
 type GameState struct {
@@ -25,8 +34,9 @@ type GameState struct {
 	Suspects []SuspectCard `json:"suspects"`
 	Clues    []ClueToken   `json:"clues"`
 
-	TurnState TurnState   `json:"turnState"`
-	Secret    SecretState `json:"secret"`
+	TurnState      TurnState   `json:"turnState"`
+	TurnDeadlineAt *time.Time  `json:"turnDeadlineAt,omitempty"`
+	Secret         SecretState `json:"secret"`
 }
 
 type SecretState struct {

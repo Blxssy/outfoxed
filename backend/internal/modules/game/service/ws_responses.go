@@ -14,18 +14,6 @@ type WSRequest struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-// WSError — стандартная ошибка для клиента.
-type WSError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-type WSResponse struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"` // "update" | "error"
-	Payload any    `json:"payload"`
-}
-
 type UpdatePayload struct {
 	State  domain.GameView `json:"state"`
 	Events []domain.Event  `json:"events"`
@@ -42,6 +30,46 @@ func NewUpdateResponse(reqID string, view domain.GameView, events []domain.Event
 	}
 }
 
+func ErrorResponse(reqID string, err error) WSResponse {
+	wsErr := ToWSError(err)
+	return NewErrorResponse(reqID, wsErr.Code, wsErr.Message)
+}
+
+type WSResponse struct {
+	ID      string `json:"id,omitempty"`
+	Type    string `json:"type"` // lobby_update | game_update | error
+	Payload any    `json:"payload"`
+}
+
+type WSError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type GameUpdatePayload struct {
+	State  domain.GameView `json:"state"`
+	Events []domain.Event  `json:"events"`
+}
+
+func NewLobbyUpdateResponse(reqID string, lobby LobbySnapshot) WSResponse {
+	return WSResponse{
+		ID:      reqID,
+		Type:    "lobby_update",
+		Payload: lobby,
+	}
+}
+
+func NewGameUpdateResponse(reqID string, view domain.GameView, events []domain.Event) WSResponse {
+	return WSResponse{
+		ID:   reqID,
+		Type: "game_update",
+		Payload: GameUpdatePayload{
+			State:  view,
+			Events: events,
+		},
+	}
+}
+
 func NewErrorResponse(reqID string, code, message string) WSResponse {
 	return WSResponse{
 		ID:   reqID,
@@ -51,9 +79,4 @@ func NewErrorResponse(reqID string, code, message string) WSResponse {
 			Message: message,
 		},
 	}
-}
-
-func ErrorResponse(reqID string, err error) WSResponse {
-	wsErr := ToWSError(err)
-	return NewErrorResponse(reqID, wsErr.Code, wsErr.Message)
 }

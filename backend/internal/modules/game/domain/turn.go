@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type TurnState struct {
 	Goal    TurnGoal      `json:"goal"`
 	Pending PendingAction `json:"pending"`
@@ -14,14 +16,17 @@ type TurnGoal struct {
 }
 
 type RollState struct {
-	Attempts int      `json:"attempts"`
-	Faces    []string `json:"faces"`
-	Success  bool     `json:"success"`
+	RollsUsed int      `json:"rollsUsed"`
+	MaxRolls  int      `json:"maxRolls"`
+	Faces     []string `json:"faces"`
+	Kept      []bool   `json:"kept"`
+	Success   bool     `json:"success"`
 }
 
 type MoveState struct {
-	StepsTotal     int `json:"stepsTotal"`
-	StepsRemaining int `json:"stepsRemaining"`
+	StepsTotal     int   `json:"stepsTotal"`
+	StepsRemaining int   `json:"stepsRemaining"`
+	ReachableCells []int `json:"reachableCells,omitempty"`
 }
 
 func NewTurnState() TurnState {
@@ -38,4 +43,24 @@ func (t *TurnState) ResetForNextTurn() {
 	t.Pending = PendingNone
 	t.Roll = nil
 	t.Move = nil
+}
+
+func computeTurnDeadlineForPlayer(p PlayerState) *time.Time {
+	now := time.Now().UTC()
+
+	switch {
+	case p.BotAfter == nil:
+		deadline := now.Add(TurnTimeoutHuman)
+		return &deadline
+
+	case p.BotAfter != nil && now.Before(*p.BotAfter):
+		// ещё даём шанс игроку вернуться
+		deadline := *p.BotAfter
+		return &deadline
+
+	default:
+		// бот уже должен играть быстро
+		deadline := now.Add(BotStepDelay)
+		return &deadline
+	}
 }

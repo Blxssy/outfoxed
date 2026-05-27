@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
 	if s.Status == StatusFinished {
 		return s, nil, ErrGameFinished
@@ -15,7 +17,13 @@ func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
 
 	switch c := cmd.(type) {
 	case ChooseGoalCommand:
-		return applyChooseGoal(s, c)
+		return applyChooseGoal(s, c, rng)
+
+	case RerollDiceCommand:
+		return applyRerollDice(s, c, rng)
+
+	case FinishRollCommand:
+		return applyFinishRoll(s, c)
 
 	case RollAutoCommand:
 		return applyRollAuto(s, c, rng)
@@ -40,7 +48,7 @@ func Apply(s GameState, cmd Command, rng RNG) (GameState, []Event, error) {
 	}
 }
 
-func applyChooseGoal(s GameState, c ChooseGoalCommand) (GameState, []Event, error) {
+func applyChooseGoal(s GameState, c ChooseGoalCommand, rng RNG) (GameState, []Event, error) {
 	if s.Phase != PhaseChooseGoal {
 		return s, nil, ErrInvalidPhase
 	}
@@ -48,13 +56,22 @@ func applyChooseGoal(s GameState, c ChooseGoalCommand) (GameState, []Event, erro
 		return s, nil, ErrGoalAlreadySet
 	}
 
+	faces := rollInitialFaces(rng)
+	success := isRollSuccessful(c.Goal, faces)
+
 	s.TurnState.Goal = TurnGoal{
 		Set:  true,
 		Type: c.Goal,
 	}
 	s.TurnState.Pending = PendingNone
-	s.TurnState.Roll = nil
 	s.TurnState.Move = nil
+	s.TurnState.Roll = &RollState{
+		RollsUsed: 1,
+		MaxRolls:  MaxRolls,
+		Faces:     faces,
+		Kept:      make([]bool, len(faces)),
+		Success:   success,
+	}
 
 	s.Phase = PhaseRolling
 	s.Version++
@@ -66,33 +83,85 @@ func applyChooseGoal(s GameState, c ChooseGoalCommand) (GameState, []Event, erro
 				"goal": c.Goal,
 			},
 		},
+		{
+			Type: EvRolled,
+			Data: map[string]any{
+				"goal":      c.Goal,
+				"faces":     faces,
+				"rollsUsed": 1,
+				"maxRolls":  MaxRolls,
+				"success":   success,
+			},
+		},
 	}, nil
 }
 
-func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event, error) {
+func applyRerollDice(s GameState, c RerollDiceCommand, rng RNG) (GameState, []Event, error) {
 	if s.Phase != PhaseRolling {
 		return s, nil, ErrInvalidPhase
 	}
 	if !s.TurnState.Goal.Set {
 		return s, nil, ErrGoalNotSet
 	}
-
-	res := RollForGoal(s.TurnState.Goal.Type, rng)
-
-	s.TurnState.Roll = &RollState{
-		Attempts: res.Attempts,
-		Faces:    res.Faces,
-		Success:  res.Success,
+	if s.TurnState.Roll == nil {
+		return s, nil, ErrInvalidPhase
 	}
 
-	events := []Event{
+	roll := s.TurnState.Roll
+	if roll.RollsUsed >= roll.MaxRolls {
+		return s, nil, ErrNoRollsLeft
+	}
+
+	keep := make([]bool, DiceCount)
+	for _, idx := range c.KeepIndices {
+		if idx < 0 || idx >= DiceCount {
+			return s, nil, ErrInvalidMove
+		}
+		keep[idx] = true
+	}
+
+	roll.Faces = rerollFaces(roll.Faces, keep, rng)
+	roll.Kept = keep
+	roll.RollsUsed++
+	roll.Success = isRollSuccessful(s.TurnState.Goal.Type, roll.Faces)
+
+	s.Version++
+
+	return s, []Event{
 		{
 			Type: EvRolled,
 			Data: map[string]any{
-				"success":  res.Success,
-				"goal":     res.Goal,
-				"attempts": res.Attempts,
-				"faces":    res.Faces,
+				"goal":      s.TurnState.Goal.Type,
+				"faces":     roll.Faces,
+				"rollsUsed": roll.RollsUsed,
+				"maxRolls":  roll.MaxRolls,
+				"kept":      keep,
+				"success":   roll.Success,
+			},
+		},
+	}, nil
+}
+
+func applyFinishRoll(s GameState, c FinishRollCommand) (GameState, []Event, error) {
+	if s.Phase != PhaseRolling {
+		return s, nil, ErrInvalidPhase
+	}
+	if !s.TurnState.Goal.Set {
+		return s, nil, ErrGoalNotSet
+	}
+	if s.TurnState.Roll == nil {
+		return s, nil, ErrInvalidPhase
+	}
+
+	res := s.TurnState.Roll
+
+	events := []Event{
+		{
+			Type: "roll_finished",
+			Data: map[string]any{
+				"success": res.Success,
+				"goal":    s.TurnState.Goal.Type,
+				"faces":   res.Faces,
 			},
 		},
 	}
@@ -101,12 +170,11 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 		s.TurnState.Pending = PendingNone
 		s.TurnState.Move = nil
 
-		s.Fox.Track += 3
-
+		s.Fox.Track += FoxStepPerFailure
 		events = append(events, Event{
 			Type: EvFoxMoved,
 			Data: map[string]any{
-				"by":    3,
+				"by":    FoxStepPerFailure,
 				"track": s.Fox.Track,
 			},
 		})
@@ -114,6 +182,7 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 		if s.Fox.EscapeAt > 0 && s.Fox.Track >= s.Fox.EscapeAt {
 			s.Status = StatusFinished
 			s.Result = ResultLose
+			s.TurnDeadlineAt = nil
 			s.Phase = PhaseEndTurn
 			s.Version++
 
@@ -138,11 +207,22 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 			return s, nil, ErrInvalidMove
 		}
 
-		s.TurnState.Pending = PendingMoveToClue
-		s.TurnState.Move = &MoveState{
+		idx := activePlayerIndex(s.Players, s.ActiveSeat)
+		if idx < 0 {
+			return s, nil, ErrInvalidMove
+		}
+
+		from := s.Players[idx].PawnCell
+		occupied := occupiedCells(s.Players, s.ActiveSeat)
+
+		move := &MoveState{
 			StepsTotal:     steps,
 			StepsRemaining: steps,
 		}
+		move.ReachableCells = s.Board.ReachableWithin(from, steps, occupied)
+
+		s.TurnState.Pending = PendingMoveToClue
+		s.TurnState.Move = move
 		s.Phase = PhaseMovePawn
 
 	case GoalSuspect:
@@ -158,6 +238,27 @@ func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event,
 	return s, events, nil
 }
 
+func applyRollAuto(s GameState, c RollAutoCommand, rng RNG) (GameState, []Event, error) {
+	if s.Phase != PhaseRolling {
+		return s, nil, ErrInvalidPhase
+	}
+	if !s.TurnState.Goal.Set {
+		return s, nil, ErrGoalNotSet
+	}
+
+	res := RollForGoal(s.TurnState.Goal.Type, rng)
+
+	s.TurnState.Roll = &RollState{
+		RollsUsed: res.Attempts,
+		MaxRolls:  MaxRolls,
+		Faces:     res.Faces,
+		Kept:      []bool{true, true, true},
+		Success:   res.Success,
+	}
+
+	return applyFinishRoll(s, FinishRollCommand{Player: c.Player})
+}
+
 func applyMovePawn(s GameState, c MovePawnCommand) (GameState, []Event, error) {
 	if s.Phase != PhaseMovePawn {
 		return s, nil, ErrInvalidPhase
@@ -169,52 +270,60 @@ func applyMovePawn(s GameState, c MovePawnCommand) (GameState, []Event, error) {
 		return s, nil, ErrInvalidMove
 	}
 
-	player, ok := s.ActivePlayer()
-	if !ok {
+	playerIdx := activePlayerIndex(s.Players, s.ActiveSeat)
+	if playerIdx < 0 {
+		return s, nil, ErrInvalidMove
+	}
+
+	from := s.Players[playerIdx].PawnCell
+	to := c.TargetIndex
+
+	if to < 0 || to >= len(s.Board.Cells) {
+		return s, nil, ErrInvalidMove
+	}
+	if from == to {
 		return s, nil, ErrInvalidMove
 	}
 
 	move := s.TurnState.Move
-	if c.Steps <= 0 || c.Steps > move.StepsRemaining {
+	if !containsInt(move.ReachableCells, to) {
 		return s, nil, ErrInvalidMove
 	}
 
-	newCell := s.Board.ClampIndex(player.PawnCell + c.Steps)
-
-	for i := range s.Players {
-		if s.Players[i].Seat == s.ActiveSeat {
-			s.Players[i].PawnCell = newCell
-			break
-		}
-	}
-
-	move.StepsRemaining -= c.Steps
-
-	cell, ok := s.Board.CellAt(newCell)
-	if !ok {
+	dist := ManhattanDistance(from, to, s.Board.Width)
+	if dist <= 0 || dist > move.StepsRemaining {
 		return s, nil, ErrInvalidMove
 	}
+
+	s.Players[playerIdx].PawnCell = to
+	move.StepsRemaining -= dist
 
 	events := []Event{
 		{
 			Type: EvPawnMoved,
 			Data: map[string]any{
 				"seat":      s.ActiveSeat,
-				"toCell":    newCell,
+				"fromCell":  from,
+				"toCell":    to,
+				"cost":      dist,
 				"stepsLeft": move.StepsRemaining,
 			},
 		},
 	}
 
-	// Дошли до клетки с подсказкой — можно брать улику сразу.
+	cell, ok := s.Board.CellAt(to)
+	if !ok {
+		return s, nil, ErrInvalidMove
+	}
+
 	if cell.Type == BoardCellClue && cell.ClueTokenID != "" {
 		s.TurnState.Pending = PendingResolveClue
+		s.TurnState.Move = nil
 		s.Phase = PhaseResolveClue
 		s.Version++
 		return s, events, nil
 	}
 
-	// Шаги закончились, но до улики не дошли — ход заканчивается.
 	if move.StepsRemaining == 0 {
 		s.TurnState.Pending = PendingNone
 		s.TurnState.Move = nil
@@ -222,6 +331,9 @@ func applyMovePawn(s GameState, c MovePawnCommand) (GameState, []Event, error) {
 		s.Version++
 		return s, events, nil
 	}
+
+	occupied := occupiedCells(s.Players, s.ActiveSeat)
+	move.ReachableCells = s.Board.ReachableWithin(to, move.StepsRemaining, occupied)
 
 	s.Version++
 	return s, events, nil
@@ -253,7 +365,19 @@ func applyTakeClue(s GameState, c TakeClueCommand) (GameState, []Event, error) {
 		return s, nil, ErrNoPendingAction
 	}
 	if clue.Revealed {
-		return s, nil, ErrAllCluesCollected
+		s.TurnState.Pending = PendingNone
+		s.TurnState.Move = nil
+		s.Phase = PhaseEndTurn
+		s.Version++
+
+		return s, []Event{
+			{
+				Type: "clue_already_taken",
+				Data: map[string]any{
+					"clueId": clue.ID,
+				},
+			},
+		}, nil
 	}
 
 	result, ok := s.Secret.ClueTruth[clue.ID]
@@ -350,6 +474,8 @@ func applyAccuse(s GameState, c AccuseCommand) (GameState, []Event, error) {
 		s.Result = ResultLose
 	}
 
+	s.TurnDeadlineAt = nil
+
 	s.TurnState.ResetForNextTurn()
 	s.Phase = PhaseEndTurn
 	s.Version++
@@ -382,13 +508,27 @@ func applyEndTurn(s GameState, c EndTurnCommand) (GameState, []Event, error) {
 	s.ActiveSeat = nextSeat(s)
 	s.Turn++
 	s.Phase = PhaseChooseGoal
+
+	activeIdx := activePlayerIndex(s.Players, s.ActiveSeat)
+	if activeIdx >= 0 {
+		s.TurnDeadlineAt = computeTurnDeadlineForPlayer(s.Players[activeIdx])
+	} else {
+		s.TurnDeadlineAt = nil
+	}
+
 	s.Version++
+
+	var deadline time.Time
+	if s.TurnDeadlineAt != nil {
+		deadline = *s.TurnDeadlineAt
+	}
 
 	ev := Event{
 		Type: EvTurnEnded,
 		Data: map[string]any{
-			"activeSeat": s.ActiveSeat,
-			"turn":       s.Turn,
+			"activeSeat":     s.ActiveSeat,
+			"turn":           s.Turn,
+			"turnDeadlineAt": deadline,
 		},
 	}
 

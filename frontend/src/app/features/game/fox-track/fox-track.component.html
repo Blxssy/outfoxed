@@ -1,0 +1,45 @@
+<div class="fox-track">
+    <div class="track-title">
+        <span class="title-text">ЛИСИЙ СЛЕД</span>
+    </div>
+
+    <div class="track-body">
+        <div
+            class="track-cell start-cell"
+            [class.fox-here]="foxPosition() === startStep"
+        >
+            @if (foxPosition() === startStep) {
+                <span class="fox-icon">🦊</span>
+            } @else {
+                <span class="step-num start-num">{{ startStep }}</span>
+            }
+        </div>
+
+        @for (step of steps; track step) {
+            <div class="track-connector"></div>
+            <div
+                class="track-cell"
+                [class.fox-here]="foxPosition() === step"
+                [class.passed]="foxPosition() < step"
+            >
+                @if (foxPosition() === step) {
+                    <span class="fox-icon">🦊</span>
+                } @else {
+                    <span class="step-num">{{ step }}</span>
+                }
+            </div>
+        }
+
+        <div class="track-connector"></div>
+        <div
+            class="track-cell burrow-cell"
+            [class.fox-here]="foxPosition() === finishStep()"
+        >
+            @if (foxPosition() === finishStep()) {
+                <span class="fox-icon">🦊</span>
+            } @else {
+                <span class="burrow-icon">🕳️</span>
+            }
+        </div>
+    </div>
+</div>

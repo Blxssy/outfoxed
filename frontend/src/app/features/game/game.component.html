@@ -1,1 +1,74 @@
-<p>game works!</p>
+<div class="top-bar">
+    <app-player-cards
+        [players]="players()"
+        [currentPlayerSeat]="activeSeat()"
+    ></app-player-cards>
+</div>
+
+<div class="main-row">
+    <div class="left-col">
+        <app-fox-track
+            [foxTrack]="fox()?.track ?? 0"
+            [escapeAt]="fox()?.escapeAt ?? 15"
+        ></app-fox-track>
+
+        <app-game-board
+            [cells]="boardCells()"
+            [players]="players()"
+            [activeSeat]="activeSeat()"
+            [mySeat]="state()?.me?.seat"
+            [reachableCells]="reachableCells()"
+            [canMove]="canMovePawn()"
+            [collectedClueIndices]="collectedClueIndices()"
+            (cellClicked)="onCellClicked($event)"
+        />
+    </div>
+
+    <div class="right-col">
+        <app-dice-roll
+            [roll]="roll()"
+            [goalType]="goalType()"
+            [isMyTurn]="isMyTurn()"
+            [canChooseGoal]="canChooseGoal()"
+            [canReroll]="canReroll()"
+            [canFinishRoll]="canFinishRoll()"
+            [disabled]="hasPending()"
+            (goalChosen)="chooseGoal($event)"
+            (rerolled)="rerollDice($event)"
+            (rollFinished)="finishRoll()"
+        ></app-dice-roll>
+
+        <app-clues-list
+            [clues]="revealedClues()"
+            [totalCount]="totalCluesCount()"
+        />
+
+        <app-suspects
+            [suspects]="suspects()"
+            [canReveal]="canRevealSuspects()"
+            [canAccuse]="canAccuse()"
+            [selectedIds]="selectedSuspects()"
+            [disabled]="hasPending()"
+            (suspectToggled)="toggleSuspect($event)"
+            (revealConfirmed)="confirmReveal()"
+            (accused)="accuse($event)"
+        />
+
+        <app-investigation-log></app-investigation-log>
+    </div>
+</div>
+
+<button class="rules-btn" title="Правила игры" (click)="showRules.set(true)">
+    ?
+</button>
+
+@if (showRules()) {
+    <app-game-rules (closed)="showRules.set(false)" />
+}
+
+@if (isFinished()) {
+    <app-finish-modal
+        [result]="gameResult()"
+        (lobbyClicked)="leaveGame()"
+    ></app-finish-modal>
+}

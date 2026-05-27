@@ -1,4 +1,4 @@
-export type User = {
+export interface User {
     id: string;
     username: string;
     email: string;
@@ -7,26 +7,26 @@ export type User = {
     created_at: string;
     updated_at: string;
     last_seen_at: string;
-};
+}
 
-export type AuthResponse = {
+export interface AuthResponse {
     user: User;
     access_token: string;
     refresh_token: string;
-};
+}
 
-export type RefreshResponse = {
+export interface RefreshResponse {
     access_token: string;
     refresh_token: string;
-};
+}
 
-export type LoginRequest = {
+export interface LoginRequest {
     email: string;
     password: string;
-};
+}
 
-export type RegisterRequest = {
+export interface RegisterRequest {
     username: string;
     email: string;
     password: string;
-};
+}

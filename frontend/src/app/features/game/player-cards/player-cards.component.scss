@@ -1,0 +1,84 @@
+:host {
+    display: block;
+    font-family: "Nunito", cursive, sans-serif;
+    max-width: 800px;
+}
+
+.players-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.player-card {
+    border-radius: 16px;
+    padding: 12px 14px;
+    border: 2px solid transparent;
+    position: relative;
+    cursor: default;
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s,
+        filter 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.player-0 {
+    background: linear-gradient(135deg, #e85858, #b82020);
+}
+
+.player-1 {
+    background: linear-gradient(135deg, #5590f0, #2858c0);
+}
+
+.player-2 {
+    background: linear-gradient(135deg, #4ccc68, #228840);
+}
+
+.player-3 {
+    background: linear-gradient(135deg, #e8aa38, #b06010);
+}
+
+.player-card.active {
+    border-color: rgba(255, 230, 80, 0.7);
+    box-shadow:
+        0 0 0 3px rgba(255, 220, 60, 0.22),
+        0 6px 24px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+.player-card.inactive {
+    filter: brightness(0.85) saturate(0.65);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.player-name {
+    font-size: 13px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.turn-badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.8px;
+    color: #ffe860;
+    text-transform: uppercase;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    animation: badge-pulse 1.4s ease-in-out infinite;
+}
+@keyframes badge-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}

@@ -1,0 +1,176 @@
+<div class="modal-backdrop" (click)="onBackdropClick($event)">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">Правила игры</span>
+            <button class="modal-close" (click)="close()">X</button>
+        </div>
+
+        <div class="modal-body">
+            <section class="rules-section">
+                <p class="rules-section__text">
+                    Цель игры — найти Коварного Лиса раньше, чем он доберётся до
+                    норки.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">😥 Как проиграть</h3>
+                <p class="rules-section__text">
+                    Если Лис дойдёт до конца следа раньше, чем вы раскроете
+                    виновника, партия проиграна.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">🏆 Как победить</h3>
+                <p class="rules-section__text">
+                    Собирайте улики, открывайте подозреваемых и исключайте
+                    невиновных. Когда будете уверены, кто именно Лис, сделайте
+                    обвинение.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">👥 Подозреваемые</h3>
+                <p class="rules-section__text">
+                    В игре участвуют 16 подозреваемых.
+                </p>
+                <p class="rules-section__text">
+                    У каждого из них есть по 3 предмета.
+                </p>
+                <p class="rules-section__text">
+                    В каждой новой партии используется 6 случайных предметов из
+                    общего набора, поэтому состав улик и подозреваемых каждый
+                    раз немного отличается.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">🔍 Улики</h3>
+                <p class="rules-section__text">На поле лежат 6 улик.</p>
+                <p class="rules-section__text">
+                    Каждая улика относится к одному из предметов и показывает:
+                </p>
+                <p class="rules-section__text">
+                    есть этот предмет у Лиса или нет.
+                </p>
+
+                <div class="rules-legend__item">
+                    <span class="legend-cell legend-cell--clue"></span>
+                    <span>Клетка с уликой</span>
+                </div>
+                <div class="rules-legend__item">
+                    <span class="legend-cell legend-cell--collected"></span>
+                    <span>Улика уже собрана</span>
+                </div>
+                <p class="rules-section__text">
+                    По найденным уликам можно постепенно исключать
+                    подозреваемых.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">🔄 Ход игрока</h3>
+                <p class="rules-section__text">Во время своего хода игрок:</p>
+                <ol class="rules-list">
+                    <li><strong>выбирает цель:</strong></li>
+                    <li>🐾 - искать улику;</li>
+                    <li>👁️ - проверять подозреваемых;</li>
+                    <li>бросает кубики;</li>
+                    <li><strong>если бросок успешный:</strong></li>
+                    <li>- двигается к улике;</li>
+                    <li>- или открывает подозреваемых;</li>
+                </ol>
+                <p class="rules-section__text">
+                    завершает ход, и очередь переходит следующему игроку.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">🎲 Бросок кубиков</h3>
+                <div class="rules-dice">
+                    <p class="rules-section__text">
+                        После выбора цели кубики бросаются на нужный результат.
+                    </p>
+                    <p class="rules-section__text">
+                        Игрок может оставлять подходящие кубики и перебрасывать
+                        остальные.
+                    </p>
+                    <div class="rules-dice__item">
+                        <span class="rules-dice__face">🐾</span>
+                        <span class="rules-dice__label"
+                            >След — нужен для улик</span
+                        >
+                    </div>
+                    <div class="rules-dice__item">
+                        <span class="rules-dice__face">👁️</span>
+                        <span class="rules-dice__label"
+                            >Глаз — нужен для свидетелей</span
+                        >
+                    </div>
+                </div>
+                <p class="rules-section__text">Если бросок успешный:</p>
+                <p class="rules-section__text">
+                    - можно выполнить выбранное действие.
+                </p>
+                <p class="rules-section__text">Если бросок не удался:</p>
+                <p class="rules-section__text">
+                    Лис продвигается вперёд по следу.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">🗺️ Движение по полю</h3>
+                <p class="rules-section__text">
+                    Игроки начинают ходить из центра поля.
+                </p>
+                <p class="rules-section__text">
+                    Если цель хода — улика, после успешного броска игрок может
+                    переместиться на доступную клетку и попытаться добраться до
+                    ближайшей улики.
+                </p>
+                <div class="rules-legend">
+                    <div class="rules-legend__item">
+                        <span class="legend-cell legend-cell--reachable"></span>
+                        <span>Клетка, доступная для хода</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">🕵️ Проверка подозреваемых</h3>
+                <p class="rules-section__text">
+                    Если цель хода — подозреваемые, успешный бросок позволяет
+                    открыть новых подозреваемых и сравнить их предметы с
+                    найденными уликами.
+                </p>
+                <p class="rules-section__text">
+                    Так можно постепенно сузить круг поиска.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">👉 Обвинение</h3>
+                <p class="rules-section__text">
+                    Когда вы уверены, кто Лис, можно сделать обвинение.
+                </p>
+                <p class="rules-section__text">
+                    Если обвинение верное — вы побеждаете. Если обвинение
+                    неверное — партия сразу проиграна.
+                </p>
+            </section>
+
+            <section class="rules-section">
+                <h3 class="rules-section__title">🦊 Лисий след</h3>
+                <p class="rules-section__text">
+                    Лис двигается вперёд, когда игрокам не удаётся выполнить
+                    действие.
+                </p>
+                <p class="rules-section__text">
+                    Если Лис доберётся до конца следа, игра заканчивается
+                    поражением команды.
+                </p>
+            </section>
+        </div>
+    </div>
+</div>

@@ -17,4 +17,6 @@ jobs:
           go-version: '1.26'
 
       - name: Run tests
-        run: cd backend && go test ./...
+        run: |
+          cd backend
+          go test -v -coverprofile=coverage.out ./... | tee test-output.txt

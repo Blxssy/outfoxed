@@ -1,0 +1,284 @@
+:host {
+    display: block;
+}
+
+.panel {
+    background: rgba(245, 232, 205, 0.95);
+    border-radius: 18px;
+    border: 2px solid rgba(200, 150, 70, 0.38);
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.18),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid rgba(200, 150, 70, 0.22);
+    flex-wrap: wrap;
+}
+
+.panel-icon {
+    font-size: 18px;
+}
+
+.panel-title {
+    font-size: 14px;
+    font-weight: 900;
+    color: #7a3e08;
+}
+
+.panel-goal-badge {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: #b07040;
+    background: rgba(200, 150, 70, 0.15);
+    padding: 3px 10px;
+    border-radius: 8px;
+}
+
+.panel-body {
+    padding: 12px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dice-hint {
+    font-size: 11px;
+    color: #b07040;
+    font-weight: 600;
+    font-style: italic;
+    margin: 0;
+
+    strong {
+        color: #7a3e08;
+        font-style: normal;
+    }
+
+    &--muted {
+        color: #c8a070;
+    }
+}
+
+.dice-keep-hint {
+    font-size: 10px;
+    color: #c8a070;
+    font-weight: 600;
+    font-style: italic;
+    margin: 0;
+    text-align: center;
+}
+
+.dice-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dice-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255, 248, 230, 0.8);
+    border: 2px solid rgba(200, 150, 70, 0.3);
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        transform 0.12s,
+        box-shadow 0.15s;
+
+    &:hover:not(.disabled) {
+        background: rgba(255, 242, 210, 0.98);
+        border-color: rgba(220, 160, 60, 0.6);
+        transform: translateX(3px);
+    }
+
+    &.selected {
+        background: linear-gradient(
+            135deg,
+            rgba(240, 180, 60, 0.22),
+            rgba(220, 140, 40, 0.12)
+        );
+        border-color: rgba(220, 160, 50, 0.7);
+        box-shadow: 0 0 0 3px rgba(230, 160, 50, 0.14);
+    }
+
+    &.disabled {
+        opacity: 0.5;
+        cursor: default;
+        pointer-events: none;
+    }
+}
+
+.opt-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.opt-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.opt-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #7a3e08;
+}
+
+.opt-desc {
+    font-size: 10px;
+    color: #b07040;
+    font-weight: 600;
+}
+
+.dice-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 4px 0;
+}
+
+.die {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: #fff8ee;
+    border: 2px solid rgba(200, 150, 70, 0.45);
+    box-shadow:
+        0 3px 10px rgba(0, 0, 0, 0.12),
+        inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+        transform 0.15s,
+        box-shadow 0.15s,
+        border-color 0.15s,
+        background 0.15s;
+    font-family: inherit;
+
+    &:hover:not(:disabled):not(.die--readonly) {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+        border-color: rgba(200, 150, 70, 0.8);
+    }
+
+    &:disabled {
+        cursor: default;
+    }
+
+    &--kept {
+        background: rgba(80, 180, 80, 0.12);
+        border-color: rgba(60, 160, 60, 0.7);
+        box-shadow:
+            0 0 0 3px rgba(60, 180, 60, 0.18),
+            0 3px 10px rgba(0, 0, 0, 0.1);
+
+        &:hover:not(:disabled) {
+            background: rgba(80, 180, 80, 0.2);
+        }
+    }
+
+    &--match {
+        .die__face {
+            filter: drop-shadow(0 0 4px rgba(80, 180, 80, 0.6));
+        }
+    }
+
+    &--rolling {
+        animation: dice-roll 0.35s ease;
+    }
+
+    &--readonly {
+        cursor: default;
+        opacity: 0.7;
+    }
+
+    &__face {
+        font-size: 26px;
+        line-height: 1;
+        pointer-events: none;
+    }
+
+    &__lock {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        font-size: 12px;
+        line-height: 1;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    }
+}
+
+@keyframes dice-roll {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    25% {
+        transform: rotate(-15deg) scale(0.92);
+    }
+    50% {
+        transform: rotate(15deg) scale(1.08);
+    }
+    75% {
+        transform: rotate(-8deg) scale(0.96);
+    }
+    100% {
+        transform: rotate(0deg) scale(1);
+    }
+}
+
+.dice-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.dice-btn {
+    width: 100%;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+        transform 0.12s,
+        box-shadow 0.12s,
+        filter 0.12s;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+        transform: none !important;
+    }
+
+    &:not(:disabled):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    }
+
+    &--reroll {
+        background: linear-gradient(135deg, #5590f0, #2858c0);
+        color: #fff;
+    }
+
+    &--finish {
+        background: linear-gradient(135deg, #4ccc68, #228840);
+        color: #fff;
+    }
+}
