@@ -1,13 +1,19 @@
 :host {
     display: block;
-    font-family: "Nunito", cursive, sans-serif;
-    max-width: 800px;
+    width: 100%;
 }
 
 .players-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
+    justify-content: center;
     gap: 10px;
+    flex-wrap: wrap;
+
+    .player-card {
+        flex: 0 0 auto;
+        width: 200px;
+        max-width: 220px;
+    }
 }
 
 .player-card {

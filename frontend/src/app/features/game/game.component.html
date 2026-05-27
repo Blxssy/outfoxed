@@ -38,10 +38,13 @@
             (rollFinished)="finishRoll()"
         ></app-dice-roll>
 
-        <app-clues-list
-            [clues]="revealedClues()"
-            [totalCount]="totalCluesCount()"
-        />
+        <div class="clues-log-card">
+            <app-clues-list
+                [clues]="revealedClues()"
+                [totalCount]="totalCluesCount()"
+            />
+            <app-investigation-log></app-investigation-log>
+        </div>
 
         <app-suspects
             [suspects]="suspects()"
@@ -53,8 +56,6 @@
             (revealConfirmed)="confirmReveal()"
             (accused)="accuse($event)"
         />
-
-        <app-investigation-log></app-investigation-log>
     </div>
 </div>
 
