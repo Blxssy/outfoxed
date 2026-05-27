@@ -70,18 +70,6 @@
 
 ---
 
-## 🏗 Архитектура
-
-Проект построен по принципу разделения ответственности:
-
-- **domain** — чистая игровая логика
-- **service** — сценарии использования и orchestration
-- **repo** — работа с PostgreSQL
-- **transport/http** — REST API
-- **transport/ws** — WebSocket transport и real-time события
-
----
-
 ## ⚙️ Технологии
 
 ### Backend
@@ -143,27 +131,32 @@ cd <your-project-folder>
 Пример:
 
 ```env
+HTTP_ADDR=:8080
+
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=postgres
 
-JWT_SECRET=super-secret-key
-HTTP_ADDR=:8080
+DB_DATA_SOURCE=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
+
+JWT_SECRET=8f2c1b7a9d4e6f103b8c5a7d2e9f4c1b6a8d0e3f5c7b9a1d4e6f8c2b7a9d1e5
+
+IMAGE_REPOSITORY=ghcr.io/blxssy/outfoxed
 ```
 
 ### 3. Запустить проект
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build 
 ```
 
 ### 4. Открыть в браузере
 
-- фронт: `http://localhost`
-- backend API через proxy: `http://localhost/api/...`
-- WebSocket: `ws://localhost/ws/...`
+- фронт: `http://localhost:80`
+- backend API через proxy: `http://localhost:8080/api/...`
+- WebSocket: `ws://localhost:8080/ws/...`
 
 ---
 
@@ -184,83 +177,6 @@ npm start
 
 Если фронт запускается отдельно через dev server, убедись, что в dev-конфиге разрешён нужный origin для API.
 
----
-
-## 🔌 WebSocket flow
-
-Общий сценарий работы клиента:
-
-1. пользователь получает токен
-2. создаёт или открывает игру
-3. получает snapshot по HTTP
-4. подключается к `/ws/games/{id}?token=...`
-5. получает update от сервера
-6. отправляет игровые команды
-7. при reconnect повторно получает актуальное состояние
-
-### Пример команды
-```json
-{
-  "id": "req-1",
-  "type": "command",
-  "command": "choose_goal",
-  "payload": {
-    "goal": "clue"
-  }
-}
-```
-
-### Пример update
-```json
-{
-  "id": "req-1",
-  "type": "update",
-  "payload": {
-    "state": {},
-    "events": []
-  }
-}
-```
-
----
-
-## 🧠 Особенности игровой логики
-
-### Сервер — источник истины
-Frontend ничего не “догадывает” сам и не хранит скрытую игровую информацию как главную модель.
-
-### Reconnect
-Если соединение рвётся:
-- клиент переподключается
-- сервер отдаёт актуальный snapshot
-- игра продолжается без рассинхрона
-
-### Таймаут хода
-Если игрок долго не ходит:
-- сервер обрабатывает таймаут
-- при необходимости ход подхватывает бот
-- игра не зависает из-за одного игрока
-
-### Возврат в активную игру
-Пользователь может снова открыть свою незавершённую партию и продолжить с актуального состояния.
-
----
-
-## 🧪 Тестирование
-
-В проекте полезно разделять несколько типов тестов:
-
-### Unit tests
-Проверяют доменную игровую логику:
-- выбор цели
-- кубики
-- движение
-- работу улик
-- открытие подозреваемых
-
-```bash
-go test ./...
-```
 ---
 
 ## 🌍 Деплой
