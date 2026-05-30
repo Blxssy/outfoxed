@@ -114,6 +114,12 @@ jobs:
           docker-compose.yml \
           "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/game/docker-compose.yml"
 
+    - name: Upload Caddyfile
+      run: |
+        scp -i ~/.ssh/deploy_key \
+          frontend/Caddyfile \
+          "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/game/Caddyfile"
+
     - name: Deploy Docker Compose stack
       run: |
         ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" << 'EOF'
