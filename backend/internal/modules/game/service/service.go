@@ -13,6 +13,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const WaitingGameTTL = 15 * time.Minute
+
 type RealtimeNotifier interface {
 	PublishLobby(gameID string)
 	PublishGame(gameID string, state domain.GameState, events []domain.Event)
@@ -224,6 +226,249 @@ func (s *Service) processOneTimedOutGame(ctx context.Context, gameID string) err
 
 	if s.notifier != nil {
 		s.notifier.PublishGame(gameID, st, events)
+	}
+
+	return nil
+}
+
+func computeDeadlineForPlayer(p domain.PlayerState) *time.Time {
+	now := time.Now().UTC()
+
+	switch {
+	case p.BotAfter == nil:
+		deadline := now.Add(domain.TurnTimeoutHuman)
+		return &deadline
+
+	case now.Before(*p.BotAfter):
+		deadline := *p.BotAfter
+		return &deadline
+
+	default:
+		deadline := now.Add(domain.BotStepDelay)
+		return &deadline
+	}
+}
+
+func (s *Service) MarkPlayerInactive(ctx context.Context, gameID string, userID string, immediate bool) error {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
+	if err != nil {
+		return fmt.Errorf("get game for update: %w", err)
+	}
+
+	var st domain.GameState
+	if err := json.Unmarshal(row.StateJSON, &st); err != nil {
+		return fmt.Errorf("unmarshal state: %w", err)
+	}
+
+	now := time.Now().UTC()
+	changed := false
+	activePlayerDisconnected := false
+
+	for i := range st.Players {
+		if string(st.Players[i].UserID) != userID {
+			continue
+		}
+
+		if st.Players[i].Connected {
+			st.Players[i].Connected = false
+			changed = true
+		}
+
+		if immediate {
+			st.Players[i].BotAfter = &now
+		} else {
+			botAfter := now.Add(domain.TurnGraceTimeout)
+			st.Players[i].BotAfter = &botAfter
+		}
+		changed = true
+
+		if st.Status == domain.StatusActive && st.Players[i].Seat == st.ActiveSeat {
+			activePlayerDisconnected = true
+		}
+		break
+	}
+
+	if !changed {
+		return nil
+	}
+
+	if activePlayerDisconnected {
+		if active, ok := st.ActivePlayer(); ok {
+			st.TurnDeadlineAt = computeDeadlineForPlayer(active)
+		}
+	}
+
+	st.Version++
+
+	stateJSON, err := json.Marshal(st)
+	if err != nil {
+		return fmt.Errorf("marshal state: %w", err)
+	}
+
+	if err := s.repo.UpdateStateAndDeadline(
+		ctx,
+		tx,
+		gameID,
+		string(st.Status),
+		stateJSON,
+		st.Version,
+		st.TurnDeadlineAt,
+	); err != nil {
+		return fmt.Errorf("update state: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	if s.notifier != nil {
+		s.notifier.PublishGame(gameID, st, nil)
+	}
+
+	return nil
+}
+
+func (s *Service) MarkPlayerActive(ctx context.Context, gameID string, userID string) error {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
+	if err != nil {
+		return fmt.Errorf("get game for update: %w", err)
+	}
+
+	var st domain.GameState
+	if err := json.Unmarshal(row.StateJSON, &st); err != nil {
+		return fmt.Errorf("unmarshal state: %w", err)
+	}
+
+	changed := false
+	activePlayerReconnected := false
+
+	for i := range st.Players {
+		if string(st.Players[i].UserID) != userID {
+			continue
+		}
+
+		if !st.Players[i].Connected {
+			st.Players[i].Connected = true
+			changed = true
+		}
+
+		if st.Players[i].BotAfter != nil {
+			st.Players[i].BotAfter = nil
+			changed = true
+		}
+
+		if st.Status == domain.StatusActive && st.Players[i].Seat == st.ActiveSeat {
+			activePlayerReconnected = true
+		}
+		break
+	}
+
+	if !changed {
+		return nil
+	}
+
+	if activePlayerReconnected {
+		if active, ok := st.ActivePlayer(); ok {
+			st.TurnDeadlineAt = computeDeadlineForPlayer(active)
+		}
+	}
+
+	st.Version++
+
+	stateJSON, err := json.Marshal(st)
+	if err != nil {
+		return fmt.Errorf("marshal state: %w", err)
+	}
+
+	if err := s.repo.UpdateStateAndDeadline(
+		ctx,
+		tx,
+		gameID,
+		string(st.Status),
+		stateJSON,
+		st.Version,
+		st.TurnDeadlineAt,
+	); err != nil {
+		return fmt.Errorf("update state: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	if s.notifier != nil {
+		s.notifier.PublishGame(gameID, st, nil)
+	}
+
+	return nil
+}
+
+func (s *Service) ProcessStaleWaitingGames(ctx context.Context) error {
+	rows, err := s.repo.ListStaleWaitingGames(ctx, 50, WaitingGameTTL)
+	if err != nil {
+		return fmt.Errorf("list stale waiting games: %w", err)
+	}
+
+	for _, row := range rows {
+		if err := s.deleteWaitingGame(ctx, row.ID); err != nil {
+			s.log.Info().
+				Err(err).
+				Str("game_id", row.ID).
+				Msg("delete stale waiting game failed")
+			continue
+		}
+
+		s.log.Info().
+			Str("game_id", row.ID).
+			Msg("deleted stale waiting game")
+	}
+
+	return nil
+}
+
+func (s *Service) deleteWaitingGame(ctx context.Context, gameID string) error {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row, err := s.repo.GetGameForUpdate(ctx, tx, gameID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("get game for update: %w", err)
+	}
+
+	if row.Status != string(domain.StatusWaiting) {
+		return nil
+	}
+
+	if err := s.repo.DeleteGame(ctx, tx, gameID); err != nil {
+		return fmt.Errorf("delete game: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
 	}
 
 	return nil

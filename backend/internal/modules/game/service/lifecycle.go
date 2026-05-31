@@ -326,6 +326,11 @@ func (s *Service) LeaveGame(ctx context.Context, gameID string, userID string) (
 			return LeaveGameResult{}, fmt.Errorf("commit: %w", err)
 		}
 
+		// Явный выход из активной игры: бот начинает играть сразу
+		if err := s.MarkPlayerInactive(ctx, gameID, userID, true); err != nil {
+			return LeaveGameResult{}, fmt.Errorf("mark player inactive: %w", err)
+		}
+
 		return LeaveGameResult{
 			GameDeleted: false,
 		}, nil

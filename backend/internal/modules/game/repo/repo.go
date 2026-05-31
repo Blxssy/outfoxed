@@ -80,4 +80,5 @@ type GameRepo interface {
 	DeleteGame(ctx context.Context, tx *sql.Tx, gameID string) error
 	UpdateStateAndDeadline(ctx context.Context, tx *sql.Tx, gameID string, status string, newStateJSON []byte, newVersion int, deadline *time.Time) error
 	ListDueGamesForTimeout(ctx context.Context, limit int) ([]GameRow, error)
+	ListStaleWaitingGames(ctx context.Context, limit int, olderThan time.Duration) ([]GameRow, error)
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/bits"
 	"strconv"
-	"time"
 )
 
 const (
@@ -66,8 +65,10 @@ func NewActiveGameState(gameID string, players []SetupPlayer, rng RNG) GameState
 		ClueTruth:        buildClueTruth(culprit, state.Clues),
 	}
 
-	deadline := time.Now().UTC().Add(2 * time.Minute)
-	state.TurnDeadlineAt = &deadline
+	activeIdx := activePlayerIndex(state.Players, state.ActiveSeat)
+	if activeIdx >= 0 {
+		state.TurnDeadlineAt = computeTurnDeadlineForPlayer(state.Players[activeIdx])
+	}
 
 	return state
 }
