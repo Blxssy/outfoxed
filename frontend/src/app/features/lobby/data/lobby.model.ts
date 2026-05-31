@@ -1,43 +1,45 @@
 export type GameStatus = 'waiting' | 'active' | 'finished';
 export type GameVisibility = 'public' | 'private';
 
-export type RoomListItem = {
+export interface RoomListItem {
     id: string;
     title: string;
     host_username: string;
     players_count: number;
     max_players: number;
     status: GameStatus;
-};
+}
 
-export type CreateGameRequest = {
+export interface CreateGameRequest {
     title: string;
     visibility: GameVisibility;
-};
+}
 
-export type CreateGameResponse = {
+export interface CreateGameResponse {
     game: { id: string; status: GameStatus };
     player: { user_id: string; seat: number };
     title: string;
     visibility: GameVisibility;
     joinCode?: string;
-};
+}
 
-export type JoinGameResponse = {
+export interface JoinGameResponse {
     game: { id: string; status: GameStatus };
     player: { user_id: string; seat: number };
-};
+}
 
-export type JoinByCodeRequest = { code: string };
+export interface JoinByCodeRequest {
+    code: string;
+}
 
-export type LobbyPlayer = {
+export interface LobbyPlayer {
     user_id: string;
     seat: number;
     display_name: string;
     is_me: boolean;
-};
+}
 
-export type LobbySnapshot = {
+export interface LobbySnapshot {
     id: string;
     title: string;
     status: GameStatus;
@@ -48,31 +50,39 @@ export type LobbySnapshot = {
     can_start: boolean;
     min_players: number;
     max_players: number;
-};
+}
 
-export type LobbySnapshotResponse = { game: LobbySnapshot };
+export interface LobbySnapshotResponse {
+    game: LobbySnapshot;
+}
 
-export type LeaveGameResponse = {
+export interface LeaveGameResponse {
     game_deleted: boolean;
     new_host_username?: string;
-};
+}
 
-export type StartGameResponse = {
+export interface StartGameResponse {
     game: { id: string; status: GameStatus };
     redirect: { route: string };
-};
+}
 
-export type LobbyWsUpdate = {
+export interface LobbyWsUpdate {
     type: 'update';
     payload: {
         state: LobbySnapshot;
         events: unknown;
     };
-};
+}
 
-export type LobbyWsError = {
+export interface LobbyWsError {
     type: 'error';
     payload: { code: string; message: string };
-};
+}
 
 export type LobbyWsMessage = LobbyWsUpdate | LobbyWsError;
+
+export interface ActiveGameResponse {
+    found: boolean;
+    game?: { id: string; status: string };
+    route?: string;
+}

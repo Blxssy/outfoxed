@@ -63,6 +63,19 @@
     ?
 </button>
 
+<button
+    class="leave-btn"
+    title="Выйти из игры"
+    [disabled]="isLeaving()"
+    (click)="leaveGame()"
+>
+    @if (isLeaving()) {
+        <span class="leave-btn__spinner"></span>
+    } @else {
+        ←
+    }
+</button>
+
 @if (showRules()) {
     <app-game-rules (closed)="showRules.set(false)" />
 }
