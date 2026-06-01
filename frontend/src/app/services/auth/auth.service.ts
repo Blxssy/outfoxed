@@ -43,6 +43,12 @@ export class AuthService implements OnDestroy {
             .pipe(tap((res) => this.handleAuth(res)));
     }
 
+    loginAsGuest(): Observable<AuthResponse> {
+        return this.http
+            .post<AuthResponse>(`${this.api}/guest`, {})
+            .pipe(tap((res) => this.handleAuth(res)));
+    }
+
     refresh(): Observable<RefreshResponse> {
         const refresh = this.tokenService.getRefreshToken();
 
