@@ -8,6 +8,7 @@
             [class.player-1]="player.seat === 1"
             [class.player-2]="player.seat === 2"
             [class.player-3]="player.seat === 3"
+            [class.player-disconnect]="player.connected === false"
         >
             @if (player.seat === currentPlayerSeat()) {
                 <div class="turn-badge">ХОД</div>

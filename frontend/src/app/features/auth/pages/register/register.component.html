@@ -7,30 +7,121 @@
                 class="register-form"
                 novalidate
             >
-                <fox-input
-                    type="text"
-                    placeholder="your_name"
-                    label="Имя пользователя:"
-                    formControlName="username"
-                />
-                <fox-input
-                    type="email"
-                    placeholder="example@yandex.ru"
-                    label="E-mail:"
-                    formControlName="email"
-                />
-                <fox-input
-                    type="password"
-                    placeholder="Пароль"
-                    label="Пароль:"
-                    formControlName="password"
-                />
-                <fox-input
-                    type="password"
-                    placeholder="Пароль"
-                    label="Повторите пароль:"
-                    formControlName="confirmPassword"
-                />
+                <div class="form-field">
+                    <fox-input
+                        type="text"
+                        placeholder="your_name"
+                        label="Имя пользователя:"
+                        formControlName="username"
+                    />
+
+                    @if (
+                        registerForm.get("username")?.touched &&
+                        registerForm.get("username")?.invalid
+                    ) {
+                        <div class="error">
+                            @if (
+                                registerForm.get("username")?.errors?.[
+                                    "required"
+                                ]
+                            ) {
+                                <span>Введите имя пользователя</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="form-field">
+                    <fox-input
+                        type="email"
+                        placeholder="example@yandex.ru"
+                        label="E-mail:"
+                        formControlName="email"
+                    />
+
+                    @if (
+                        registerForm.get("email")?.touched &&
+                        registerForm.get("email")?.invalid
+                    ) {
+                        <div class="error">
+                            @if (
+                                registerForm.get("email")?.errors?.["required"]
+                            ) {
+                                <span>Введите e-mail</span>
+                            }
+
+                            @if (registerForm.get("email")?.errors?.["email"]) {
+                                <span>Некорректный e-mail</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="form-field">
+                    <fox-input
+                        type="password"
+                        placeholder="Пароль"
+                        label="Пароль:"
+                        formControlName="password"
+                    />
+
+                    @if (
+                        registerForm.get("password")?.touched &&
+                        registerForm.get("password")?.invalid
+                    ) {
+                        <div class="error">
+                            @if (
+                                registerForm.get("password")?.errors?.[
+                                    "required"
+                                ]
+                            ) {
+                                <span>Введите пароль</span>
+                            }
+
+                            @if (
+                                registerForm.get("password")?.errors?.[
+                                    "minlength"
+                                ]
+                            ) {
+                                <span>
+                                    Пароль должен содержать минимум 8 символов
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="form-field">
+                    <fox-input
+                        type="password"
+                        placeholder="Повторите пароль"
+                        label="Повторите пароль:"
+                        formControlName="confirmPassword"
+                    />
+
+                    @if (
+                        registerForm.get("confirmPassword")?.touched &&
+                        registerForm.get("confirmPassword")?.invalid
+                    ) {
+                        <div class="error">
+                            @if (
+                                registerForm.get("confirmPassword")?.errors?.[
+                                    "required"
+                                ]
+                            ) {
+                                <span>Повторите пароль</span>
+                            }
+
+                            @if (
+                                registerForm.get("confirmPassword")?.errors?.[
+                                    "mismatch"
+                                ]
+                            ) {
+                                <span>Пароли не совпадают</span>
+                            }
+                        </div>
+                    }
+                </div>
 
                 <fox-button
                     class="register-btn"
@@ -40,11 +131,13 @@
                 ></fox-button>
                 <div class="account-exists">
                     Уже есть аккаунт?
-                    <a routerLink="/auth/login" class="to-login">Войти</a>
+                    <a routerLink="/auth/login" class="to-login"> Войти </a>
                 </div>
             </form>
             @if (errorMessage) {
-                <div class="error-message">{{ errorMessage }}</div>
+                <div class="error-message">
+                    {{ errorMessage }}
+                </div>
             }
         </div>
     </fox-card>
