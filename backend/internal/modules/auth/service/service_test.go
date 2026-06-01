@@ -476,3 +476,230 @@ func TestServiceRefreshRevokedToken(t *testing.T) {
 		t.Fatalf("expected ErrorInvalidRefreshToken, got %v", err)
 	}
 }
+
+func TestServiceLoginUserNotFound(t *testing.T) {
+	svc, _, _ := newTestService()
+
+	_, err := svc.Login(context.Background(), "missing@example.com", "password")
+
+	if !errors.Is(err, ErrorInvalidCredentials) {
+		t.Fatalf("expected ErrorInvalidCredentials, got %v", err)
+	}
+}
+
+func TestServiceLoginGuestUser(t *testing.T) {
+	svc, userRepo, _ := newTestService()
+
+	email := "guest@example.com"
+
+	_, err := userRepo.CreateUser(context.Background(), postgres.CreateUserParams{
+		Username:     "guest",
+		Email:        &email,
+		PasswordHash: nil,
+		IsGuest:      true,
+		Role:         "player",
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	_, err = svc.Login(context.Background(), email, "password")
+
+	if !errors.Is(err, ErrorInvalidCredentials) {
+		t.Fatalf("expected ErrorInvalidCredentials, got %v", err)
+	}
+}
+
+func TestServiceLoginUserWithoutPasswordHash(t *testing.T) {
+	svc, userRepo, _ := newTestService()
+
+	email := "nopassword@example.com"
+
+	_, err := userRepo.CreateUser(context.Background(), postgres.CreateUserParams{
+		Username:     "nopassword",
+		Email:        &email,
+		PasswordHash: nil,
+		IsGuest:      false,
+		Role:         "player",
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	_, err = svc.Login(context.Background(), email, "password")
+
+	if !errors.Is(err, ErrorInvalidCredentials) {
+		t.Fatalf("expected ErrorInvalidCredentials, got %v", err)
+	}
+}
+
+func TestServiceGetUserByIDSuccess(t *testing.T) {
+	svc, userRepo, _ := newTestService()
+
+	email := "user@example.com"
+
+	createdUser, err := userRepo.CreateUser(context.Background(), postgres.CreateUserParams{
+		Username:     "user",
+		Email:        &email,
+		PasswordHash: nil,
+		IsGuest:      false,
+		Role:         "player",
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	user, err := svc.GetUserByID(context.Background(), createdUser.ID)
+
+	if err != nil {
+		t.Fatalf("GetUserByID returned error: %v", err)
+	}
+
+	if user.ID != createdUser.ID {
+		t.Fatalf("expected user ID %q, got %q", createdUser.ID, user.ID)
+	}
+}
+
+func TestServiceGetUserByIDNotFound(t *testing.T) {
+	svc, _, _ := newTestService()
+
+	_, err := svc.GetUserByID(context.Background(), "missing-id")
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("expected sql.ErrNoRows, got %v", err)
+	}
+}
+
+func TestServiceRefreshMissingToken(t *testing.T) {
+	svc, _, _ := newTestService()
+
+	_, err := svc.Refresh(context.Background(), "missing-refresh-token")
+
+	if !errors.Is(err, ErrorInvalidRefreshToken) {
+		t.Fatalf("expected ErrorInvalidRefreshToken, got %v", err)
+	}
+}
+
+func TestServiceRefreshTokenUserNotFound(t *testing.T) {
+	svc, _, refreshRepo := newTestService()
+
+	token := "token-with-missing-user"
+
+	_, err := refreshRepo.CreateRefreshToken(context.Background(), postgres.CreateRefreshTokenParams{
+		UserID:    "missing-user-id",
+		Token:     token,
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("CreateRefreshToken returned error: %v", err)
+	}
+
+	_, err = svc.Refresh(context.Background(), token)
+
+	if !errors.Is(err, ErrorInvalidRefreshToken) {
+		t.Fatalf("expected ErrorInvalidRefreshToken, got %v", err)
+	}
+}
+
+func TestServiceRegisterCreatesUserWithCorrectFields(t *testing.T) {
+	svc, _, _ := newTestService()
+
+	result, err := svc.Register(
+		context.Background(),
+		"john",
+		"john@example.com",
+		"password123",
+	)
+
+	if err != nil {
+		t.Fatalf("Register returned error: %v", err)
+	}
+
+	if result.User.Username != "john" {
+		t.Fatalf("expected username john, got %q", result.User.Username)
+	}
+
+	if result.User.Role != "player" {
+		t.Fatalf("expected role player, got %q", result.User.Role)
+	}
+
+	if result.User.IsGuest {
+		t.Fatal("registered user must not be guest")
+	}
+}
+
+func TestServiceCreateGuestCreatesUserWithCorrectFields(t *testing.T) {
+	svc, _, _ := newTestService()
+
+	result, err := svc.CreateGuest(context.Background())
+
+	if err != nil {
+		t.Fatalf("CreateGuest returned error: %v", err)
+	}
+
+	if result.User.Username == "" {
+		t.Fatal("guest username must not be empty")
+	}
+
+	if result.User.Role != "player" {
+		t.Fatalf("expected role player, got %q", result.User.Role)
+	}
+
+	if !result.User.IsGuest {
+		t.Fatal("guest user must have IsGuest=true")
+	}
+}
+
+func TestServiceRegisterDifferentUsersGetDifferentRefreshTokens(t *testing.T) {
+	svc, _, _ := newTestService()
+
+	first, err := svc.Register(
+		context.Background(),
+		"first",
+		"first@example.com",
+		"password123",
+	)
+	if err != nil {
+		t.Fatalf("first Register returned error: %v", err)
+	}
+
+	second, err := svc.Register(
+		context.Background(),
+		"second",
+		"second@example.com",
+		"password123",
+	)
+	if err != nil {
+		t.Fatalf("second Register returned error: %v", err)
+	}
+
+	if first.RefreshToken == second.RefreshToken {
+		t.Fatal("different users must receive different refresh tokens")
+	}
+}
+
+func TestServiceLoginCreatesNewRefreshTokenEachTime(t *testing.T) {
+	svc, _, _ := newTestService()
+
+	email := "login@example.com"
+	password := "password123"
+
+	_, err := svc.Register(context.Background(), "login-user", email, password)
+	if err != nil {
+		t.Fatalf("Register returned error: %v", err)
+	}
+
+	firstLogin, err := svc.Login(context.Background(), email, password)
+	if err != nil {
+		t.Fatalf("first Login returned error: %v", err)
+	}
+
+	secondLogin, err := svc.Login(context.Background(), email, password)
+	if err != nil {
+		t.Fatalf("second Login returned error: %v", err)
+	}
+
+	if firstLogin.RefreshToken == secondLogin.RefreshToken {
+		t.Fatal("each login must create a new refresh token")
+	}
+}
