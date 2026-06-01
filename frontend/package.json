@@ -46,6 +46,6 @@
     "vite": "^6.4.2",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.2.4",
-    "zone.js": "^0.16.2"
+    "zone.js": "~0.15.0"
   }
 }
