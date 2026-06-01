@@ -31,4 +31,4 @@ jobs:
     - name: Run Angular tests
       run: |
         cd frontend
-        npx ng test --watch=false --browsers=ChromeHeadless --progress=true --verbose
+        npm run test
