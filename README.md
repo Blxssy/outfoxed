@@ -172,7 +172,7 @@ go run ./cmd/app/main.go
 ```bash
 cd frontend
 npm install
-npm start
+ng serve
 ```
 
 Если фронт запускается отдельно через dev server, убедись, что в dev-конфиге разрешён нужный origin для API.
