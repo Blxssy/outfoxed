@@ -47,6 +47,10 @@
     background: linear-gradient(135deg, #e8aa38, #b06010);
 }
 
+.player-disconnect {
+    background: linear-gradient(135deg, #999999, #636363);
+}
+
 .player-card.active {
     border-color: rgba(255, 230, 80, 0.7);
     box-shadow:
