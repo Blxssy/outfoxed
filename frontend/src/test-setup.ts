@@ -1,13 +1,16 @@
 import 'zone.js';
 import 'zone.js/testing';
-import '@angular/compiler';
-import { TestBed } from '@angular/core/testing';
+import { getTestBed } from '@angular/core/testing';
 import {
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting,
-} from '@angular/platform-browser-dynamic/testing';
+    BrowserTestingModule,
+    platformBrowserTesting,
+} from '@angular/platform-browser/testing';
+import { destroyPlatform } from '@angular/core';
 
-TestBed.initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting(),
+destroyPlatform();
+
+getTestBed().initTestEnvironment(
+    BrowserTestingModule,
+    platformBrowserTesting(),
+    { teardown: { destroyAfterEach: true } },
 );
