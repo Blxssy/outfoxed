@@ -443,6 +443,19 @@ func (s *Service) StartGame(ctx context.Context, gameID string, userID string) (
 	}
 
 	activeState := domain.NewActiveGameState(gameID, toSetupPlayers(players), s.nextRNG())
+
+	startEvents := []domain.Event{
+		{
+			Type: "game_started",
+			Data: map[string]any{
+				"activeSeat": activeState.ActiveSeat,
+				"turn":       activeState.Turn,
+			},
+		},
+	}
+
+	domain.AppendEventsToJournal(&activeState, startEvents, "")
+
 	stateJSON, err := json.Marshal(activeState)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("marshal active state: %w", err)
@@ -457,7 +470,7 @@ func (s *Service) StartGame(ctx context.Context, gameID string, userID string) (
 	}
 
 	if s.notifier != nil {
-		s.notifier.PublishGame(gameID, activeState, nil)
+		s.notifier.PublishGame(gameID, activeState, startEvents)
 	}
 
 	result := StartResult{

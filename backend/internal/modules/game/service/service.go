@@ -71,6 +71,8 @@ func (s *Service) ApplyCommand(ctx context.Context, gameID string, userID string
 		return domain.GameState{}, nil, err
 	}
 
+	domain.AppendEventsToJournal(&newState, events, cmd.Actor())
+
 	// Сериализуем новый state
 	stateJSON, err := json.Marshal(newState)
 	if err != nil {
@@ -202,6 +204,16 @@ func (s *Service) processOneTimedOutGame(ctx context.Context, gameID string) err
 			break
 		}
 	}
+
+	var actor domain.PlayerID
+	for _, p := range st.Players {
+		if p.Seat == originalSeat {
+			actor = p.UserID
+			break
+		}
+	}
+
+	domain.AppendEventsToJournal(&st, events, actor)
 
 	stateJSON, err := json.Marshal(st)
 	if err != nil {
