@@ -1,11 +1,22 @@
 import { DatePipe } from '@angular/common';
-import { Component } from '@angular/core';
+import {
+    Component,
+    computed,
+    effect,
+    ElementRef,
+    inject,
+    viewChild,
+} from '@angular/core';
 
-export interface JournalEntry {
-    id: number;
+import { GameService } from '../data/game.service';
+
+export interface JournalItem {
+    id: string;
+    turn: number;
+    version: number;
     type: string;
-    html: string;
-    timestamp: Date;
+    message: string;
+    createdAt: string;
 }
 
 @Component({
@@ -15,9 +26,28 @@ export interface JournalEntry {
     styleUrl: './investigation-log.component.scss',
 })
 export class InvestigationLogComponent {
-    entries: JournalEntry[] = [];
+    private readonly game = inject(GameService);
 
-    get reversed() {
-        return [...this.entries].reverse();
+    private readonly scrollContainer =
+        viewChild<ElementRef<HTMLElement>>('scrollContainer');
+
+    readonly entries = computed<JournalItem[]>(() => {
+        const state = this.game.gameState();
+
+        return [...(state?.journal ?? [])].reverse();
+    });
+
+    constructor() {
+        effect(() => {
+            this.entries();
+
+            queueMicrotask(() => {
+                const el = this.scrollContainer()?.nativeElement;
+
+                if (el) {
+                    el.scrollTop = 0;
+                }
+            });
+        });
     }
 }
