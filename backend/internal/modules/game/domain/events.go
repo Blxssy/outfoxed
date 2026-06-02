@@ -45,6 +45,10 @@ func AppendEventsToJournal(st *GameState, events []Event, actor PlayerID) {
 	now := time.Now().UTC()
 
 	for i, ev := range events {
+		if !IsJournalEvent(ev.Type) {
+			continue
+		}
+
 		message := FormatEventMessage(*st, ev, actor)
 		if message == "" {
 			continue
@@ -87,11 +91,27 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 		return withPlayer(playerName, "выбрал цель хода.")
 
 	case EvRolled:
-		success := eventBool(ev, "success")
-		if success {
-			return withPlayer(playerName, "успешно бросил кубики.")
+		faces := eventStringSlice(ev, "faces")
+		if len(faces) == 0 {
+			return withPlayer(playerName, "бросил кубики.")
 		}
-		return withPlayer(playerName, "бросил кубики.")
+
+		rollsUsed := eventInt(ev, "rollsUsed", 0)
+		maxRolls := eventInt(ev, "maxRolls", 0)
+
+		diceText := formatDiceFaces(faces)
+
+		if rollsUsed > 0 && maxRolls > 0 {
+			return withPlayer(
+				playerName,
+				fmt.Sprintf("бросил кубики %d/%d: %s.", rollsUsed, maxRolls, diceText),
+			)
+		}
+
+		return withPlayer(
+			playerName,
+			fmt.Sprintf("бросил кубики: %s.", diceText),
+		)
 
 	case EvPawnMoved:
 		return ""
@@ -147,8 +167,14 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 		return "Игра завершена."
 
 	case "turn_timed_out":
-		seat := eventAny(ev, "seat")
-		return fmt.Sprintf("Игрок на месте %v не успел сходить. Ход доигрывает бот.", seat)
+		seat := eventInt(ev, "seat", st.ActiveSeat)
+		name := playerNameBySeat(st, seat)
+
+		if name != "" {
+			return fmt.Sprintf("%s не успел сходить. Ход доигрывает бот.", name)
+		}
+
+		return "Игрок не успел сходить. Ход доигрывает бот."
 
 	case "clue_already_taken":
 		return "Эта улика уже была найдена ранее."
@@ -158,6 +184,59 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 
 	default:
 		return fmt.Sprintf("Событие: %s.", ev.Type)
+	}
+}
+
+func IsJournalEvent(t EventType) bool {
+	switch t {
+	case
+		EvGoalChosen,
+		EvRolled,
+		EvClueTaken,
+		EvSuspectsRevealed,
+		EvFoxMoved,
+		EvTurnEnded,
+		EvAccused,
+		EvGameFinished:
+		return true
+
+	case "game_started", "turn_timed_out", "clue_already_taken":
+		return true
+
+	default:
+		return false
+	}
+}
+
+func formatDiceFaces(faces []string) string {
+	if len(faces) == 0 {
+		return ""
+	}
+
+	result := ""
+
+	for i, face := range faces {
+		if i > 0 {
+			result += ", "
+		}
+
+		result += diceFaceLabel(face)
+	}
+
+	return result
+}
+
+func diceFaceLabel(face string) string {
+	switch face {
+	case string(FaceEye):
+		return "👁️ Глаз"
+	case string(FaceFootprint):
+		return "👣 След"
+	default:
+		if face == "" {
+			return "❔ Неизвестно"
+		}
+		return face
 	}
 }
 
@@ -239,7 +318,7 @@ func traitLabel(value string) string {
 	case string(ClueTraitBag):
 		return "Сумка"
 	case string(ClueTraitBoots):
-		return "Сапоги"
+		return "Ботинки"
 	default:
 		if value == "" {
 			return "Неизвестно"
