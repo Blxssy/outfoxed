@@ -41,6 +41,8 @@ type GameView struct {
 	Suspects []SuspectCardView `json:"suspects"`
 	Clues    []ClueTokenView   `json:"clues"`
 
+	Journal []JournalEntry `json:"journal"`
+
 	Move *MoveView `json:"move,omitempty"`
 	Roll *RollView `json:"roll,omitempty"`
 
@@ -77,6 +79,8 @@ func BuildGameView(st GameState, userID PlayerID) GameView {
 		Fox:      FoxView{Track: st.Fox.Track, EscapeAt: st.Fox.EscapeAt},
 		Suspects: make([]SuspectCardView, 0, len(st.Suspects)),
 		Clues:    make([]ClueTokenView, 0, len(st.Clues)),
+
+		Journal: copyJournal(st.Journal),
 
 		Move:             buildMoveView(st.TurnState.Move),
 		Roll:             buildRollView(st.TurnState.Roll),
@@ -240,4 +244,14 @@ func AvailableActionsFor(st GameState, userID PlayerID) []ActionType {
 	default:
 		return nil
 	}
+}
+
+func copyJournal(items []JournalEntry) []JournalEntry {
+	if len(items) == 0 {
+		return []JournalEntry{}
+	}
+
+	out := make([]JournalEntry, len(items))
+	copy(out, items)
+	return out
 }

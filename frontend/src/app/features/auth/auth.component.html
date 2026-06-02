@@ -22,5 +22,26 @@
             Регистрация
         </a>
     </nav>
+
     <router-outlet />
+
+    <div class="guest-section">
+        <div class="guest-divider">
+            <span class="guest-divider__line"></span>
+            <span class="guest-divider__text">или</span>
+            <span class="guest-divider__line"></span>
+        </div>
+
+        <fox-button
+            class="guest-btn"
+            [isDisabled]="isGuestLoading()"
+            (click)="loginAsGuest()"
+            [text]="'Войти как гость'"
+            [color]="'green'"
+        />
+
+        @if (guestError()) {
+            <div class="guest-error">{{ guestError() }}</div>
+        }
+    </div>
 </div>

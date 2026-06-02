@@ -5,20 +5,18 @@
 
     <div class="panel-body">
         <div class="journal-scroll" #scrollContainer>
-            @if (entries.length === 0) {
+            @if (entries().length === 0) {
                 <div class="journal-empty">Пока ничего не произошло...</div>
             }
 
-            @for (entry of reversed; track entry.id) {
-                <div
-                    class="journal-entry"
-                    [class]="'journal-entry type-' + entry.type"
-                >
+            @for (entry of entries(); track entry.id) {
+                <div class="journal-entry">
                     <div class="je-body">
-                        <div class="je-text" [innerHTML]="entry.html"></div>
-                        <div class="je-time">
-                            {{ entry.timestamp | date: "HH:mm:ss" }}
-                        </div>
+                        <span class="je-time">
+                            {{ entry.createdAt | date: "HH:mm:ss" }}
+                        </span>
+
+                        <div class="je-text">{{ entry.message }}</div>
                     </div>
                 </div>
             }

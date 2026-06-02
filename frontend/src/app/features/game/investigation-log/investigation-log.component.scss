@@ -5,6 +5,9 @@
 }
 
 .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     background: rgba(245, 232, 205, 0.95);
     border-radius: 18px;
     border: 2px solid rgba(200, 150, 70, 0.38);
@@ -30,25 +33,17 @@
 }
 
 .panel-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     padding: 10px 14px 12px;
 }
 
 .journal-scroll {
     max-height: 200px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
     scrollbar-width: thin;
     scrollbar-color: rgba(180, 120, 50, 0.4) transparent;
-    padding-right: 2px;
-}
-.journal-scroll::-webkit-scrollbar {
-    width: 4px;
-}
-.journal-scroll::-webkit-scrollbar-thumb {
-    background: rgba(180, 120, 50, 0.4);
-    border-radius: 3px;
 }
 
 .journal-empty {
@@ -58,4 +53,32 @@
     font-weight: 600;
     font-style: italic;
     padding: 10px 0;
+}
+
+.journal-entry {
+    padding: 5px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 1.45;
+    background: rgba(255, 248, 232, 0.6);
+    border: 1px solid rgba(200, 150, 70, 0.15);
+    animation: entry-in 0.2s ease;
+}
+
+.je-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.je-text {
+    color: #7a3e08;
+    font-weight: 600;
+}
+
+.je-time {
+    font-size: 9px;
+    color: #b07040;
+    font-weight: 600;
+    opacity: 0.7;
 }

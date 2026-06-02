@@ -23,76 +23,76 @@ export type AvailableAction =
     | 'end_turn'
     | 'accuse';
 
-export type PublicPlayer = {
+export interface PublicPlayer {
     userId: string;
     seat: number;
     name: string;
     pawnCell: number;
     connected: boolean;
-};
+}
 
 export interface MePlayer extends PublicPlayer {}
 
 export type CellType = 'start' | 'clue' | 'path' | 'normal';
 
-export type BoardCell = {
+export interface BoardCell {
     index: number;
     x: number;
     y: number;
     type: CellType;
     hasClue: boolean;
     clueTokenId?: string;
-};
+}
 
-export type Board = {
+export interface Board {
     width: number;
     height: number;
     cells: BoardCell[];
-};
+}
 
-export type MoveState = {
+export interface MoveState {
     reachableCells: number[];
     stepsRemaining?: number;
-};
+}
 
-export type Fox = {
+export interface Fox {
     track: number;
     escapeAt: number;
-};
+}
 
-export type SuspectTraits = {
+export interface SuspectTraits {
     glasses?: 'yes' | 'no';
     hat?: 'yes' | 'no';
     scarf?: 'yes' | 'no';
     umbrella?: 'yes' | 'no';
     color?: string;
     [key: string]: string | undefined;
-};
+}
 
-export type Suspect = {
+export interface Suspect {
     id: string;
     revealed: boolean;
     excluded: boolean;
     traits?: SuspectTraits;
-};
+}
 
-export type Clue = {
+export interface Clue {
     id: string;
     revealed: boolean;
     trait?: string;
     result?: 'yes' | 'no';
     boardCell?: number;
-};
+}
 
-export type RollState = {
+export interface RollState {
     rollsUsed: number;
     maxRolls: number;
     faces: string[];
     kept: boolean[];
     success?: boolean;
-};
+}
 
-export type PublicGameState = {
+export interface PublicGameState {
     id: string;
     status: GameStatus;
     phase: GamePhase;
@@ -110,7 +110,17 @@ export type PublicGameState = {
     move?: MoveState;
     availableActions: AvailableAction[] | null;
     turnDeadlineAt?: string;
-};
+    journal: JournalItem[];
+}
+
+export interface JournalItem {
+    id: string;
+    turn: number;
+    version: number;
+    type: string;
+    message: string;
+    createdAt: string;
+}
 
 export type WsCommandName =
     | 'choose_goal'
@@ -123,27 +133,27 @@ export type WsCommandName =
     | 'end_turn'
     | 'accuse';
 
-export type ChooseGoalPayload = {
+export interface ChooseGoalPayload {
     goal: GoalType;
-};
-export type RollAutoPayload = {};
-export type RerollDicePayload = {
+}
+export interface RollAutoPayload {}
+export interface RerollDicePayload {
     keepIndices: number[];
-};
-export type FinishRollPayload = {};
-export type MovePawnPayload = {
+}
+export interface FinishRollPayload {}
+export interface MovePawnPayload {
     targetIndex: number;
-};
-export type TakeCluePayload = {};
-export type RevealSuspectsPayload = {
+}
+export interface TakeCluePayload {}
+export interface RevealSuspectsPayload {
     suspectIds: string[];
-};
-export type EndTurnPayload = {};
-export type AccusePayload = {
+}
+export interface EndTurnPayload {}
+export interface AccusePayload {
     suspectId: string;
-};
+}
 
-export type WsCommandPayloadMap = {
+export interface WsCommandPayloadMap {
     choose_goal: ChooseGoalPayload;
     roll_auto: RollAutoPayload;
     reroll_dice: RerollDicePayload;
@@ -153,7 +163,7 @@ export type WsCommandPayloadMap = {
     reveal_suspects: RevealSuspectsPayload;
     end_turn: EndTurnPayload;
     accuse: AccusePayload;
-};
+}
 
 export interface WsClientMessage<T extends WsCommandName = WsCommandName> {
     id: string;
@@ -162,32 +172,32 @@ export interface WsClientMessage<T extends WsCommandName = WsCommandName> {
     payload: WsCommandPayloadMap[T];
 }
 
-export type WsEvent = {
+export interface WsEvent {
     type: string;
     data?: Record<string, unknown>;
-};
+}
 
-export type WsUpdatePayload = {
+export interface WsUpdatePayload {
     state: PublicGameState;
     events: WsEvent[];
-};
+}
 
-export type WsErrorPayload = {
+export interface WsErrorPayload {
     code: string;
     message: string;
-};
+}
 
-export type WsServerUpdate = {
+export interface WsServerUpdate {
     id: string | null;
     type: 'update';
     payload: WsUpdatePayload;
-};
+}
 
-export type WsServerError = {
+export interface WsServerError {
     id: string | null;
     type: 'error';
     payload: WsErrorPayload;
-};
+}
 
 export type WsServerMessage = WsServerUpdate | WsServerError;
 
@@ -198,11 +208,11 @@ export type WsConnectionStatus =
     | 'reconnecting'
     | 'error';
 
-export type PendingRequest = {
+export interface PendingRequest {
     requestId: string;
     command: WsCommandName;
     sentAt: number;
-};
+}
 
 export type WsErrorCode =
     | 'not_your_turn'

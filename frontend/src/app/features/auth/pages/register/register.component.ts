@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonComponent } from '@fox/ui-kit/button';
 import { InputComponent } from '@fox/ui-kit/input';
@@ -18,7 +18,7 @@ import { CardComponent } from '@fox/ui-kit/card';
     templateUrl: './register.component.html',
     styleUrl: './register.component.scss',
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
     private readonly fb = inject(FormBuilder);
     private readonly authService = inject(AuthService);
     private readonly router = inject(Router);
@@ -28,10 +28,9 @@ export class RegisterComponent {
     readonly registerForm = this.fb.group({
         username: ['', [Validators.required]],
         email: ['', [Validators.required, Validators.email]],
-        password: ['', [Validators.required]],
+        password: ['', [Validators.required, Validators.minLength(8)]],
         confirmPassword: ['', [Validators.required]],
     });
-    // to do: валидаторы на сильный пароль
 
     ngOnInit() {
         this.registerForm.valueChanges.subscribe(() => {
@@ -42,7 +41,6 @@ export class RegisterComponent {
     onSubmit() {
         if (this.registerForm.invalid) {
             this.registerForm.markAllAsTouched();
-            // to do: настроить ошибки формы
             console.log('submit fired');
             return;
         }
