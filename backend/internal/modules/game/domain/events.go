@@ -10,6 +10,7 @@ type EventType string
 const (
 	EvGoalChosen       EventType = "goal_chosen"
 	EvRolled           EventType = "rolled"
+	EvRollFinished     EventType = "roll_finished"
 	EvFoxMoved         EventType = "fox_moved"
 	EvTurnEnded        EventType = "turn_ended"
 	EvClueTaken        EventType = "clue_taken"
@@ -44,12 +45,17 @@ func AppendEventsToJournal(st *GameState, events []Event, actor PlayerID) {
 	now := time.Now().UTC()
 
 	for i, ev := range events {
+		message := FormatEventMessage(*st, ev, actor)
+		if message == "" {
+			continue
+		}
+
 		entry := JournalEntry{
 			ID:        buildJournalEntryID(*st, ev, i),
 			Turn:      st.Turn,
 			Version:   st.Version,
 			Type:      ev.Type,
-			Message:   FormatEventMessage(*st, ev, actor),
+			Message:   message,
 			Data:      ev.Data,
 			CreatedAt: now,
 		}
@@ -88,9 +94,10 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 		return withPlayer(playerName, "бросил кубики.")
 
 	case EvPawnMoved:
-		from := eventAny(ev, "fromCell")
-		to := eventAny(ev, "toCell")
-		return withPlayer(playerName, fmt.Sprintf("переместился с клетки %v на клетку %v.", from, to))
+		return ""
+
+	case EvRollFinished:
+		return ""
 
 	case EvClueTaken:
 		trait := eventString(ev, "trait")
