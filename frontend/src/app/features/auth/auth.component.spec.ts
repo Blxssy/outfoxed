@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthComponent } from './auth.component';
+import { provideHttpClient } from '@angular/common/http';
 
 describe('AuthComponent', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             imports: [AuthComponent],
-            providers: [provideRouter([])],
+            providers: [provideRouter([]), provideHttpClient()],
         }).compileComponents();
     });
 
