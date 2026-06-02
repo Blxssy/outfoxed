@@ -1,5 +1,10 @@
 package domain
 
+import (
+	"fmt"
+	"time"
+)
+
 type EventType string
 
 const (
@@ -14,7 +19,299 @@ const (
 	EvSuspectsRevealed EventType = "suspect_revealed"
 )
 
+const MaxJournalEntries = 100
+
 type Event struct {
 	Type EventType      `json:"type"`
 	Data map[string]any `json:"data,omitempty"`
+}
+
+type JournalEntry struct {
+	ID        string         `json:"id"`
+	Turn      int            `json:"turn"`
+	Version   int            `json:"version"`
+	Type      EventType      `json:"type"`
+	Message   string         `json:"message"`
+	Data      map[string]any `json:"data,omitempty"`
+	CreatedAt time.Time      `json:"createdAt"`
+}
+
+func AppendEventsToJournal(st *GameState, events []Event, actor PlayerID) {
+	if st == nil || len(events) == 0 {
+		return
+	}
+
+	now := time.Now().UTC()
+
+	for i, ev := range events {
+		entry := JournalEntry{
+			ID:        buildJournalEntryID(*st, ev, i),
+			Turn:      st.Turn,
+			Version:   st.Version,
+			Type:      ev.Type,
+			Message:   FormatEventMessage(*st, ev, actor),
+			Data:      ev.Data,
+			CreatedAt: now,
+		}
+
+		st.Journal = append(st.Journal, entry)
+	}
+
+	if len(st.Journal) > MaxJournalEntries {
+		st.Journal = st.Journal[len(st.Journal)-MaxJournalEntries:]
+	}
+}
+
+func buildJournalEntryID(st GameState, ev Event, index int) string {
+	return fmt.Sprintf("%s:%d:%d:%d:%s", st.ID, st.Turn, st.Version, len(st.Journal)+index+1, ev.Type)
+}
+
+func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
+	playerName := playerNameByID(st, actor)
+
+	switch ev.Type {
+	case EvGoalChosen:
+		goal := eventString(ev, "goal")
+		if goal == string(GoalClue) {
+			return withPlayer(playerName, "выбрал цель: искать улику.")
+		}
+		if goal == string(GoalSuspect) {
+			return withPlayer(playerName, "выбрал цель: проверить подозреваемых.")
+		}
+		return withPlayer(playerName, "выбрал цель хода.")
+
+	case EvRolled:
+		success := eventBool(ev, "success")
+		if success {
+			return withPlayer(playerName, "успешно бросил кубики.")
+		}
+		return withPlayer(playerName, "бросил кубики.")
+
+	case EvPawnMoved:
+		from := eventAny(ev, "fromCell")
+		to := eventAny(ev, "toCell")
+		return withPlayer(playerName, fmt.Sprintf("переместился с клетки %v на клетку %v.", from, to))
+
+	case EvClueTaken:
+		trait := eventString(ev, "trait")
+		result := eventString(ev, "result")
+		return fmt.Sprintf("Найдена улика: %s — %s.", traitLabel(trait), traitResultLabel(result))
+
+	case EvSuspectsRevealed:
+		ids := eventStringSlice(ev, "ids")
+		names := suspectNamesByIDs(st, ids)
+		if len(names) > 0 {
+			return "Открыты подозреваемые: " + joinHuman(names) + "."
+		}
+		return "Открыты новые подозреваемые."
+
+	case EvFoxMoved:
+		track := eventAny(ev, "track")
+		return fmt.Sprintf("Лис продвинулся по следу. Текущая позиция: %v.", track)
+
+	case EvTurnEnded:
+		seat := eventAny(ev, "activeSeat")
+		turn := eventAny(ev, "turn")
+		return fmt.Sprintf("Ход завершён. Следующий игрок: место %v, ход %v.", seat, turn)
+
+	case EvAccused:
+		suspectID := eventString(ev, "suspectId")
+		correct := eventBool(ev, "correct")
+		name := suspectNameByID(st, suspectID)
+
+		if correct {
+			return fmt.Sprintf("Сделано верное обвинение: %s оказался Лисом!", name)
+		}
+		return fmt.Sprintf("Сделано неверное обвинение: %s не был Лисом.", name)
+
+	case EvGameFinished:
+		result := eventString(ev, "result")
+		if result == string(ResultWin) {
+			return "Игра завершена победой команды."
+		}
+		if result == string(ResultLose) {
+			return "Игра завершена поражением команды."
+		}
+		return "Игра завершена."
+
+	case "turn_timed_out":
+		seat := eventAny(ev, "seat")
+		return fmt.Sprintf("Игрок на месте %v не успел сходить. Ход доигрывает бот.", seat)
+
+	case "clue_already_taken":
+		return "Эта улика уже была найдена ранее."
+
+	case "game_started":
+		return "Игра началась. Расследование открыто!"
+
+	default:
+		return fmt.Sprintf("Событие: %s.", ev.Type)
+	}
+}
+
+func withPlayer(playerName string, message string) string {
+	if playerName == "" {
+		return "Игрок " + message
+	}
+	return playerName + " " + message
+}
+
+func playerNameByID(st GameState, userID PlayerID) string {
+	if userID == "" {
+		return ""
+	}
+
+	for _, p := range st.Players {
+		if p.UserID == userID {
+			return p.Name
+		}
+	}
+
+	return ""
+}
+
+func suspectNameByID(st GameState, id string) string {
+	for _, suspect := range st.Suspects {
+		if suspect.ID == id {
+			if suspect.Code != "" {
+				return string(suspect.Code)
+			}
+			return suspect.ID
+		}
+	}
+
+	return id
+}
+
+func suspectNamesByIDs(st GameState, ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, suspectNameByID(st, id))
+	}
+	return out
+}
+
+func joinHuman(items []string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	if len(items) == 1 {
+		return items[0]
+	}
+
+	result := ""
+	for i, item := range items {
+		switch {
+		case i == 0:
+			result = item
+		case i == len(items)-1:
+			result += " и " + item
+		default:
+			result += ", " + item
+		}
+	}
+
+	return result
+}
+
+func traitLabel(value string) string {
+	switch value {
+	case string(ClueTraitGlasses):
+		return "Очки"
+	case string(ClueTraitHat):
+		return "Шляпа"
+	case string(ClueTraitScarf):
+		return "Шарф"
+	case string(ClueTraitUmbrella):
+		return "Зонтик"
+	case string(ClueTraitBag):
+		return "Сумка"
+	case string(ClueTraitBoots):
+		return "Сапоги"
+	default:
+		if value == "" {
+			return "Неизвестно"
+		}
+		return value
+	}
+}
+
+func traitResultLabel(value string) string {
+	switch value {
+	case string(TraitYes):
+		return "есть"
+	case string(TraitNo):
+		return "нет"
+	default:
+		if value == "" {
+			return "неизвестно"
+		}
+		return value
+	}
+}
+
+func eventAny(ev Event, key string) any {
+	if ev.Data == nil {
+		return nil
+	}
+	return ev.Data[key]
+}
+
+func eventString(ev Event, key string) string {
+	if ev.Data == nil {
+		return ""
+	}
+
+	v, ok := ev.Data[key]
+	if !ok || v == nil {
+		return ""
+	}
+
+	return fmt.Sprint(v)
+}
+
+func eventBool(ev Event, key string) bool {
+	if ev.Data == nil {
+		return false
+	}
+
+	v, ok := ev.Data[key]
+	if !ok {
+		return false
+	}
+
+	switch x := v.(type) {
+	case bool:
+		return x
+	case string:
+		return x == "true" || x == "yes"
+	default:
+		return false
+	}
+}
+
+func eventStringSlice(ev Event, key string) []string {
+	if ev.Data == nil {
+		return nil
+	}
+
+	v, ok := ev.Data[key]
+	if !ok || v == nil {
+		return nil
+	}
+
+	switch x := v.(type) {
+	case []string:
+		return x
+
+	case []interface{}:
+		out := make([]string, 0, len(x))
+		for _, item := range x {
+			out = append(out, fmt.Sprint(item))
+		}
+		return out
+
+	default:
+		return nil
+	}
 }

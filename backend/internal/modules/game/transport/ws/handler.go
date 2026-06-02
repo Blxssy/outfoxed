@@ -178,7 +178,8 @@ func (h *Handler) broadcastState(room *Room, state domain.GameState, reqID strin
 	for _, client := range clients {
 		view := domain.BuildGameView(state, domain.PlayerID(client.UserID))
 		applyConnectedState(&view, connected)
-		client.Conn.SendJSON(service.NewUpdateResponse(reqID, view, events))
+
+		client.Conn.SendJSON(service.NewGameUpdateResponse(reqID, view, events))
 	}
 }
 

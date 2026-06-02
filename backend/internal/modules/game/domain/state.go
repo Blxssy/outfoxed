@@ -34,6 +34,8 @@ type GameState struct {
 	Suspects []SuspectCard `json:"suspects"`
 	Clues    []ClueToken   `json:"clues"`
 
+	Journal []JournalEntry `json:"journal,omitempty"`
+
 	TurnState      TurnState   `json:"turnState"`
 	TurnDeadlineAt *time.Time  `json:"turnDeadlineAt,omitempty"`
 	Secret         SecretState `json:"secret"`
