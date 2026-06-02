@@ -9,7 +9,6 @@
 .register-page {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
     color: #ffffff;
 }
 
@@ -37,6 +36,12 @@
 
 .register-btn {
     margin-top: 24px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .auth-form__extras {

@@ -157,6 +157,15 @@ func (s *Service) Login(ctx context.Context, email, password string) (*AuthResul
 		return nil, err
 	}
 
+	_, err = s.refreshTokenRepo.CreateRefreshToken(ctx, postgres.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &AuthResult{
 		User:         user,
 		AccessToken:  accessToken,

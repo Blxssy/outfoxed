@@ -7,3 +7,11 @@
 
     <router-outlet />
 </div>
+
+@if (activeGameService.activeGame()) {
+    <fox-button
+        class="return-to-game-btn"
+        (click)="returnToGame()"
+        [text]="'Вернуться в игру'"
+    />
+}

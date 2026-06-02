@@ -110,6 +110,22 @@ func Run(cfg *config.Config) {
 	}()
 
 	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := gameService.ProcessStaleWaitingGames(ctx); err != nil {
+					log.Error().Err(err).Msg("process stale waiting games failed")
+				}
+			}
+		}
+	}()
+
+	go func() {
 		log.Info().Str("addr", srv.Addr).Msg("http server listening")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("http server crashed")

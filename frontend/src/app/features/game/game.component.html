@@ -38,10 +38,13 @@
             (rollFinished)="finishRoll()"
         ></app-dice-roll>
 
-        <app-clues-list
-            [clues]="revealedClues()"
-            [totalCount]="totalCluesCount()"
-        />
+        <div class="clues-log-card">
+            <app-clues-list
+                [clues]="revealedClues()"
+                [totalCount]="totalCluesCount()"
+            />
+            <app-investigation-log></app-investigation-log>
+        </div>
 
         <app-suspects
             [suspects]="suspects()"
@@ -53,10 +56,29 @@
             (revealConfirmed)="confirmReveal()"
             (accused)="accuse($event)"
         />
-
-        <app-investigation-log></app-investigation-log>
     </div>
 </div>
+
+<button class="rules-btn" title="Правила игры" (click)="showRules.set(true)">
+    ?
+</button>
+
+<button
+    class="leave-btn"
+    title="Выйти из игры"
+    [disabled]="isLeaving()"
+    (click)="leaveGame()"
+>
+    @if (isLeaving()) {
+        <span class="leave-btn__spinner"></span>
+    } @else {
+        ←
+    }
+</button>
+
+@if (showRules()) {
+    <app-game-rules (closed)="showRules.set(false)" />
+}
 
 @if (isFinished()) {
     <app-finish-modal

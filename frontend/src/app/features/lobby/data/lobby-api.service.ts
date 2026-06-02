@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
+    ActiveGameResponse,
     CreateGameRequest,
     CreateGameResponse,
     JoinByCodeRequest,
@@ -52,5 +53,9 @@ export class LobbyApiService {
 
     startGame(id: string): Observable<StartGameResponse> {
         return this.http.post<StartGameResponse>(`${this.api}/${id}/start`, {});
+    }
+
+    getActiveGame(): Observable<ActiveGameResponse> {
+        return this.http.get<ActiveGameResponse>(`${this.api}/me/active`);
     }
 }

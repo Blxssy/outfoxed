@@ -1,4 +1,12 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import {
+    Component,
+    computed,
+    effect,
+    inject,
+    signal,
+    OnInit,
+    OnDestroy,
+} from '@angular/core';
 import { GameBoardComponent } from './game-board/game-board.component';
 import { FoxTrackComponent } from './fox-track/fox-track.component';
 import { PlayerCardsComponent } from './player-cards/player-cards.component';
@@ -10,6 +18,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { GoalType } from './data/game.types';
 import { CluesListComponent } from './clues-list/clues-list.component';
 import { FinishModalComponent } from './finish-modal/finish-modal.component';
+import { GameRulesComponent } from './game-rules/game-rules.component';
+import { LobbyApiService } from '../lobby/data/lobby-api.service';
 
 @Component({
     selector: 'app-game',
@@ -22,18 +32,20 @@ import { FinishModalComponent } from './finish-modal/finish-modal.component';
         DiceRollComponent,
         CluesListComponent,
         FinishModalComponent,
+        GameRulesComponent,
     ],
     templateUrl: './game.component.html',
     styleUrl: './game.component.scss',
 })
-export class GameComponent {
+export class GameComponent implements OnInit, OnDestroy {
     protected readonly game = inject(GameService);
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly lobbyApi = inject(LobbyApiService);
 
     readonly selectedSuspects = signal<string[]>([]);
-
     readonly isLeaving = signal(false);
+    readonly showRules = signal(false);
 
     private errorTimer: ReturnType<typeof setTimeout> | null = null;
     private gameId = '';
@@ -70,6 +82,7 @@ export class GameComponent {
     ngOnInit(): void {
         this.gameId = this.route.snapshot.paramMap.get('id') ?? '';
         if (this.gameId) this.game.startSession(this.gameId);
+        this.showRules.set(true);
     }
 
     ngOnDestroy(): void {
@@ -155,8 +168,21 @@ export class GameComponent {
     }
 
     leaveGame(): void {
+        if (this.isLeaving()) return;
+        this.isLeaving.set(true);
+
         this.game.endSession();
-        this.router.navigate(['/lobby']);
+
+        this.lobbyApi.leaveGame(this.gameId).subscribe({
+            next: () => {
+                this.isLeaving.set(false);
+                this.router.navigate(['/lobby']);
+            },
+            error: () => {
+                this.isLeaving.set(false);
+                this.router.navigate(['/lobby']);
+            },
+        });
     }
 
     chooseGoal(goal: GoalType): void {

@@ -25,7 +25,7 @@ func NewUpdateResponse(reqID string, view domain.GameView, events []domain.Event
 		Type: "update",
 		Payload: UpdatePayload{
 			State:  view,
-			Events: events,
+			Events: normalizeEvents(events),
 		},
 	}
 }
@@ -65,7 +65,7 @@ func NewGameUpdateResponse(reqID string, view domain.GameView, events []domain.E
 		Type: "game_update",
 		Payload: GameUpdatePayload{
 			State:  view,
-			Events: events,
+			Events: normalizeEvents(events),
 		},
 	}
 }
@@ -79,4 +79,11 @@ func NewErrorResponse(reqID string, code, message string) WSResponse {
 			Message: message,
 		},
 	}
+}
+
+func normalizeEvents(events []domain.Event) []domain.Event {
+	if events == nil {
+		return []domain.Event{}
+	}
+	return events
 }

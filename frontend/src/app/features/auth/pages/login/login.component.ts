@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Validators } from '@angular/forms';
 import { InputComponent } from '@fox/ui-kit/input';
@@ -20,7 +20,7 @@ import { CardComponent } from '@fox/ui-kit/card';
     templateUrl: './login.component.html',
     styleUrl: './login.component.scss',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
     private readonly fb = inject(FormBuilder);
     private readonly authService = inject(AuthService);
     private readonly router = inject(Router);
@@ -52,12 +52,7 @@ export class LoginComponent {
         this.authService
             .login({ email: email!, password: password! })
             .subscribe({
-                next: (res: any) => {
-                    this.tokenService.setTokens(
-                        res.access_token,
-                        res.refresh_token,
-                    );
-
+                next: () => {
                     this.router.navigate(['/lobby']);
                 },
                 error: (err) => {
