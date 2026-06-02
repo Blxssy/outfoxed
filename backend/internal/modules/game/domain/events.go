@@ -10,6 +10,7 @@ type EventType string
 const (
 	EvGoalChosen       EventType = "goal_chosen"
 	EvRolled           EventType = "rolled"
+	EvRollFinished     EventType = "roll_finished"
 	EvFoxMoved         EventType = "fox_moved"
 	EvTurnEnded        EventType = "turn_ended"
 	EvClueTaken        EventType = "clue_taken"
@@ -44,12 +45,21 @@ func AppendEventsToJournal(st *GameState, events []Event, actor PlayerID) {
 	now := time.Now().UTC()
 
 	for i, ev := range events {
+		if !IsJournalEvent(ev.Type) {
+			continue
+		}
+
+		message := FormatEventMessage(*st, ev, actor)
+		if message == "" {
+			continue
+		}
+
 		entry := JournalEntry{
 			ID:        buildJournalEntryID(*st, ev, i),
 			Turn:      st.Turn,
 			Version:   st.Version,
 			Type:      ev.Type,
-			Message:   FormatEventMessage(*st, ev, actor),
+			Message:   message,
 			Data:      ev.Data,
 			CreatedAt: now,
 		}
@@ -81,16 +91,33 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 		return withPlayer(playerName, "выбрал цель хода.")
 
 	case EvRolled:
-		success := eventBool(ev, "success")
-		if success {
-			return withPlayer(playerName, "успешно бросил кубики.")
+		faces := eventStringSlice(ev, "faces")
+		if len(faces) == 0 {
+			return withPlayer(playerName, "бросил кубики.")
 		}
-		return withPlayer(playerName, "бросил кубики.")
+
+		rollsUsed := eventInt(ev, "rollsUsed", 0)
+		maxRolls := eventInt(ev, "maxRolls", 0)
+
+		diceText := formatDiceFaces(faces)
+
+		if rollsUsed > 0 && maxRolls > 0 {
+			return withPlayer(
+				playerName,
+				fmt.Sprintf("бросил кубики %d/%d: %s.", rollsUsed, maxRolls, diceText),
+			)
+		}
+
+		return withPlayer(
+			playerName,
+			fmt.Sprintf("бросил кубики: %s.", diceText),
+		)
 
 	case EvPawnMoved:
-		from := eventAny(ev, "fromCell")
-		to := eventAny(ev, "toCell")
-		return withPlayer(playerName, fmt.Sprintf("переместился с клетки %v на клетку %v.", from, to))
+		return ""
+
+	case EvRollFinished:
+		return ""
 
 	case EvClueTaken:
 		trait := eventString(ev, "trait")
@@ -110,9 +137,14 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 		return fmt.Sprintf("Лис продвинулся по следу. Текущая позиция: %v.", track)
 
 	case EvTurnEnded:
-		seat := eventAny(ev, "activeSeat")
-		turn := eventAny(ev, "turn")
-		return fmt.Sprintf("Ход завершён. Следующий игрок: место %v, ход %v.", seat, turn)
+		seat := eventInt(ev, "activeSeat", st.ActiveSeat)
+		name := playerNameBySeat(st, seat)
+
+		if name != "" {
+			return fmt.Sprintf("Ход завершён. Расследование продолжает %s.", name)
+		}
+
+		return "Ход завершён. Очередь переходит следующему игроку."
 
 	case EvAccused:
 		suspectID := eventString(ev, "suspectId")
@@ -135,8 +167,14 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 		return "Игра завершена."
 
 	case "turn_timed_out":
-		seat := eventAny(ev, "seat")
-		return fmt.Sprintf("Игрок на месте %v не успел сходить. Ход доигрывает бот.", seat)
+		seat := eventInt(ev, "seat", st.ActiveSeat)
+		name := playerNameBySeat(st, seat)
+
+		if name != "" {
+			return fmt.Sprintf("%s не успел сходить. Ход доигрывает бот.", name)
+		}
+
+		return "Игрок не успел сходить. Ход доигрывает бот."
 
 	case "clue_already_taken":
 		return "Эта улика уже была найдена ранее."
@@ -146,6 +184,59 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 
 	default:
 		return fmt.Sprintf("Событие: %s.", ev.Type)
+	}
+}
+
+func IsJournalEvent(t EventType) bool {
+	switch t {
+	case
+		EvGoalChosen,
+		EvRolled,
+		EvClueTaken,
+		EvSuspectsRevealed,
+		EvFoxMoved,
+		EvTurnEnded,
+		EvAccused,
+		EvGameFinished:
+		return true
+
+	case "game_started", "turn_timed_out", "clue_already_taken":
+		return true
+
+	default:
+		return false
+	}
+}
+
+func formatDiceFaces(faces []string) string {
+	if len(faces) == 0 {
+		return ""
+	}
+
+	result := ""
+
+	for i, face := range faces {
+		if i > 0 {
+			result += ", "
+		}
+
+		result += diceFaceLabel(face)
+	}
+
+	return result
+}
+
+func diceFaceLabel(face string) string {
+	switch face {
+	case string(FaceEye):
+		return "👁️ Глаз"
+	case string(FaceFootprint):
+		return "👣 След"
+	default:
+		if face == "" {
+			return "❔ Неизвестно"
+		}
+		return face
 	}
 }
 
@@ -227,7 +318,7 @@ func traitLabel(value string) string {
 	case string(ClueTraitBag):
 		return "Сумка"
 	case string(ClueTraitBoots):
-		return "Сапоги"
+		return "Ботинки"
 	default:
 		if value == "" {
 			return "Неизвестно"
@@ -313,5 +404,45 @@ func eventStringSlice(ev Event, key string) []string {
 
 	default:
 		return nil
+	}
+}
+
+func playerNameBySeat(st GameState, seat int) string {
+	for _, p := range st.Players {
+		if p.Seat == seat {
+			return p.Name
+		}
+	}
+
+	return ""
+}
+
+func eventInt(ev Event, key string, fallback int) int {
+	if ev.Data == nil {
+		return fallback
+	}
+
+	v, ok := ev.Data[key]
+	if !ok || v == nil {
+		return fallback
+	}
+
+	switch x := v.(type) {
+	case int:
+		return x
+	case int8:
+		return int(x)
+	case int16:
+		return int(x)
+	case int32:
+		return int(x)
+	case int64:
+		return int(x)
+	case float64:
+		return int(x)
+	case float32:
+		return int(x)
+	default:
+		return fallback
 	}
 }
