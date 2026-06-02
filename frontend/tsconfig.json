@@ -20,7 +20,10 @@
     "baseUrl": "./",
     "paths": {
       "@fox/ui-kit/*": ["src/app/ui-kit/*"]
-    }
+    },
+    "types": [
+      "vitest/globals"
+    ]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
