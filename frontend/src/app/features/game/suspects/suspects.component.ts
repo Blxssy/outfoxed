@@ -1,6 +1,6 @@
 import { Component, input, output, signal, computed } from '@angular/core';
 
-export type SuspectTraits = {
+export interface SuspectTraits {
     glasses?: string;
     hat?: string;
     scarf?: string;
@@ -14,15 +14,15 @@ export type SuspectTraits = {
     key?: string;
     watch?: string;
     [key: string]: string | undefined;
-};
+}
 
-export type Suspect = {
+export interface Suspect {
     id: string;
     name?: string;
     revealed: boolean;
     excluded: boolean;
     traits?: SuspectTraits;
-};
+}
 
 export const TRAIT_ICONS: Record<string, string> = {
     glasses: '👓',
@@ -45,13 +45,7 @@ export const TRAIT_LABELS: Record<string, string> = {
     scarf: 'Шарф',
     umbrella: 'Зонт',
     bag: 'Сумка',
-    boots: 'Сапоги',
-    gloves: 'Перчатки',
-    badge: 'Значок',
-    book: 'Книга',
-    camera: 'Камера',
-    key: 'Ключ',
-    watch: 'Часы',
+    boots: 'Ботинки',
 };
 
 @Component({
