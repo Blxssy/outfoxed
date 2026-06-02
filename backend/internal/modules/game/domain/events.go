@@ -110,9 +110,14 @@ func FormatEventMessage(st GameState, ev Event, actor PlayerID) string {
 		return fmt.Sprintf("Лис продвинулся по следу. Текущая позиция: %v.", track)
 
 	case EvTurnEnded:
-		seat := eventAny(ev, "activeSeat")
-		turn := eventAny(ev, "turn")
-		return fmt.Sprintf("Ход завершён. Следующий игрок: место %v, ход %v.", seat, turn)
+		seat := eventInt(ev, "activeSeat", st.ActiveSeat)
+		name := playerNameBySeat(st, seat)
+
+		if name != "" {
+			return fmt.Sprintf("Ход завершён. Расследование продолжает %s.", name)
+		}
+
+		return "Ход завершён. Очередь переходит следующему игроку."
 
 	case EvAccused:
 		suspectID := eventString(ev, "suspectId")
@@ -313,5 +318,45 @@ func eventStringSlice(ev Event, key string) []string {
 
 	default:
 		return nil
+	}
+}
+
+func playerNameBySeat(st GameState, seat int) string {
+	for _, p := range st.Players {
+		if p.Seat == seat {
+			return p.Name
+		}
+	}
+
+	return ""
+}
+
+func eventInt(ev Event, key string, fallback int) int {
+	if ev.Data == nil {
+		return fallback
+	}
+
+	v, ok := ev.Data[key]
+	if !ok || v == nil {
+		return fallback
+	}
+
+	switch x := v.(type) {
+	case int:
+		return x
+	case int8:
+		return int(x)
+	case int16:
+		return int(x)
+	case int32:
+		return int(x)
+	case int64:
+		return int(x)
+	case float64:
+		return int(x)
+	case float32:
+		return int(x)
+	default:
+		return fallback
 	}
 }
